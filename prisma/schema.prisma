@@ -1,0 +1,495 @@
+// ============================================================
+// TEKOINNOVA Centro de Mando — Schema Prisma
+// Arquitectura: Hub & Spoke | 6 Módulos ERP/SaaS
+// ============================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ============================================================
+// ██████╗  █████╗ ███████╗███████╗    ███╗   ███╗ █████╗ ███████╗███████╗████████╗██████╗  ██████╗
+// ██╔══██╗██╔══██╗██╔════╝██╔════╝    ████╗ ████║██╔══██╗██╔════╝██╔════╝╚══██╔══╝██╔══██╗██╔═══██╗
+// ██████╔╝███████║███████╗█████╗      ██╔████╔██║███████║█████╗  ███████╗   ██║   ██████╔╝██║   ██║
+// ██╔══██╗██╔══██║╚════██║██╔══╝      ██║╚██╔╝██║██╔══██║██╔══╝  ╚════██║   ██║   ██╔══██╗██║   ██║
+// ██████╔╝██║  ██║███████║███████╗    ██║ ╚═╝ ██║██║  ██║███████╗███████║   ██║   ██║  ██║╚██████╔╝
+// ╚═════╝ ╚═╝  ╚═╝╚══════╝╚══════╝    ╚═╝     ╚═╝╚═╝  ╚═╝╚══════╝╚══════╝   ╚═╝   ╚═╝  ╚═╝ ╚═════╝
+// BASE DE DATOS MAESTRA — NO se altera al crear proyectos
+// ============================================================
+
+/// Unidad de medida reutilizable (m², m³, kg, u, ml, etc.)
+model UnidadMedida {
+  id     String @id @default(cuid())
+  nombre String @unique // "m²", "m³", "kg", "u", "ml"
+  simbolo String
+
+  // Relaciones
+  materialesMaestros    MaterialMaestro[]
+  rubrosMaestros        RubroMaestro[]
+  insumos               Insumo[]
+  recetasMaestraDetalle RecetaMaestraDetalle[]
+
+  @@map("unidad_medida")
+}
+
+/// Categoría de material (Hormigón, Mampostería, Cubierta, etc.)
+model CategoriaMaterial {
+  id     String @id @default(cuid())
+  nombre String @unique
+
+  materialesMaestros MaterialMaestro[]
+
+  @@map("categoria_material")
+}
+
+/// Material de la Base de Datos Maestra
+/// NUNCA se edita directamente desde un Proyecto
+model MaterialMaestro {
+  id          String  @id @default(cuid())
+  codigo      String  @unique // Ej: "LAD-001"
+  nombre      String
+  descripcion String?
+  precioBase  Float   // Precio de referencia maestro
+  activo      Boolean @default(true)
+
+  unidadMedidaId  String
+  unidadMedida    UnidadMedida      @relation(fields: [unidadMedidaId], references: [id])
+  categoriaId     String?
+  categoria       CategoriaMaterial? @relation(fields: [categoriaId], references: [id])
+
+  // Cada material maestro puede aparecer en muchas recetas maestras
+  recetasMaestras RecetaMaestraDetalle[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("material_maestro")
+}
+
+/// Categoría de Rubro (Estructura, Terminaciones, Instalaciones, etc.)
+model CategoriaRubro {
+  id     String @id @default(cuid())
+  nombre String @unique
+  orden  Int    @default(0)
+
+  rubrosMaestros RubroMaestro[]
+
+  @@map("categoria_rubro")
+}
+
+/// Rubro de la Base de Datos Maestra
+/// Ej: "Losa de H°A° e=0.20m", "Mampostería de ladrillo"
+model RubroMaestro {
+  id          String  @id @default(cuid())
+  codigo      String  @unique // Ej: "EST-001"
+  nombre      String
+  descripcion String?
+  activo      Boolean @default(true)
+
+  unidadMedidaId String
+  unidadMedida   UnidadMedida @relation(fields: [unidadMedidaId], references: [id])
+  categoriaId    String?
+  categoria      CategoriaRubro? @relation(fields: [categoriaId], references: [id])
+
+  // La receta maestra: lista de materiales y mano de obra para 1 unidad de este rubro
+  recetaDetalle RecetaMaestraDetalle[]
+
+  // Cuando se crea un proyecto, se copian los rubros del maestro
+  rubrosProyecto RubroProyecto[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("rubro_maestro")
+}
+
+/// Detalle de la Receta Maestra (ingredientes por unidad de rubro)
+/// REGLA: porcPerdida se aplica a la CANTIDAD, nunca al precio
+model RecetaMaestraDetalle {
+  id             String  @id @default(cuid())
+  cantidad       Float   // Cantidad base por unidad del rubro
+  porcPerdida    Float   @default(0) // % pérdida/desperdicio → se aplica a cantidad
+  esManodeObra   Boolean @default(false)
+  descripcionMO  String? // Descripción si es mano de obra
+
+  rubroMaestroId   String
+  rubroMaestro     RubroMaestro @relation(fields: [rubroMaestroId], references: [id], onDelete: Cascade)
+  materialMaestroId String?
+  materialMaestro   MaterialMaestro? @relation(fields: [materialMaestroId], references: [id])
+  unidadMedidaId   String?
+  unidadMedida     UnidadMedida? @relation(fields: [unidadMedidaId], references: [id])
+
+  @@map("receta_maestra_detalle")
+}
+
+// ============================================================
+// CONFIGURACIÓN GLOBAL — EMPRESA / FIRMA
+// ============================================================
+
+/// Datos de la empresa/estudio de arquitectura (registro único global)
+/// Se usa como cabezalero en todos los informes y exportaciones
+model Empresa {
+  id        String  @id @default(cuid())
+  nombre    String
+  titulo    String? // Eslogan o leyenda
+  direccion String?
+  telefono  String?
+  email     String?
+  web       String?
+  ciudad    String?
+  pais      String?
+  logoUrl   String? // URL o path relativo del logo
+
+  proyectos Proyecto[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("empresa")
+}
+
+// ============================================================
+// MÓDULO 1 — PROYECTO (FICHA TÉCNICA)
+// ============================================================
+
+enum EstadoProyecto {
+  BORRADOR
+  PRESUPUESTADO
+  EN_EJECUCION
+  PAUSADO
+  FINALIZADO
+  CANCELADO
+}
+
+/// Proyecto principal — núcleo del Hub & Spoke
+model Proyecto {
+  id              String         @id @default(cuid())
+  codigo          String         @unique // Ej: "PRY-2026-001"
+  nombre          String
+  descripcion     String?
+  ubicacion       String?
+  superficieM2    Float?
+  fechaInicio     DateTime?
+  fechaFinEstimada DateTime?
+  estado          EstadoProyecto @default(BORRADOR)
+
+  // Empresa/estudio responsable (cabezalero de informes)
+  empresaId       String?
+  empresa         Empresa?       @relation(fields: [empresaId], references: [id])
+
+  // Módulo 1 sub-modelos
+  propietarios    Propietario[]
+  equipoTecnico   MiembroEquipo[]
+  laminas         LaminaPlano[]
+
+  // Módulo 2: rubros del presupuesto (copia de maestros)
+  rubrosProyecto  RubroProyecto[]
+
+  // Módulo 3: cronograma
+  cronograma      MicrocicloTarea[]
+
+  // Módulo 4: contratos de mano de obra
+  contratosMO     ContratoManoObra[]
+
+  // Módulo 5: costos indirectos
+  costosIndirectos CostoIndirecto[]
+
+  // Módulo 6: plan de pagos
+  planPagos       CuotaPago[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("proyecto")
+}
+
+/// Hasta 5 propietarios por proyecto
+model Propietario {
+  id         String  @id @default(cuid())
+  nombre     String
+  apellido   String  @default("")
+  direccion  String?
+  dni        String?
+  telefono   String?
+  email      String?
+  porcentaje Float   @default(100) // % de participación en propiedad
+
+  proyectoId String
+  proyecto   Proyecto @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
+
+  @@map("propietario")
+}
+
+enum RolEquipo {
+  DIRECTOR_OBRA
+  ARQUITECTO
+  INGENIERO_ESTRUCTURAL
+  INGENIERO_INSTALACIONES
+  MAESTRO_MAYOR
+  OTRO
+}
+
+/// Equipo técnico responsable del proyecto
+model MiembroEquipo {
+  id       String    @id @default(cuid())
+  nombre   String
+  apellido String
+  rol      RolEquipo
+  telefono String?
+  email    String?
+  matricula String?
+
+  proyectoId String
+  proyecto   Proyecto @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
+
+  @@map("miembro_equipo")
+}
+
+/// Índice dinámico de láminas de planos (A01, E02, etc.)
+model LaminaPlano {
+  id          String  @id @default(cuid())
+  codigo      String  // Ej: "A01", "E02", "I-01"
+  titulo      String
+  disciplina  String  // Arquitectura, Estructura, Instalaciones, etc.
+  revision    String  @default("0")
+  urlArchivo  String? // Ruta o URL del archivo
+
+  proyectoId String
+  proyecto   Proyecto @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
+
+  @@map("lamina_plano")
+}
+
+// ============================================================
+// MÓDULO 2 — CÓMPUTO Y PRESUPUESTO
+// ============================================================
+
+/// Rubro COPIADO del maestro al proyecto
+/// Editar aquí NO altera el RubroMaestro original
+model RubroProyecto {
+  id          String  @id @default(cuid())
+  orden       Int     @default(0) // Para ordenar en la planilla
+  cantidad    Float   // Cómputo métrico del proyecto
+  // Márgenes aplicados sobre el Subtotal de Costo Directo
+  porcImprevistos Float @default(0) // %
+  porcGanancia    Float @default(0) // %
+  activo      Boolean @default(true)
+
+  // Referencia al maestro (solo lectura, para trazabilidad)
+  rubroMaestroId String
+  rubroMaestro   RubroMaestro @relation(fields: [rubroMaestroId], references: [id])
+
+  proyectoId String
+  proyecto   Proyecto @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
+
+  // La receta COPIADA y editable dentro del proyecto
+  insumos Insumo[]
+
+  // Tareas de cronograma asociadas
+  tareasCronograma MicrocicloTarea[]
+
+  // Contratos MO asociados (muchos a muchos)
+  contratosMO ContratoRubroProyecto[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("rubro_proyecto")
+}
+
+/// Insumo = copia editable de RecetaMaestraDetalle dentro del proyecto
+/// REGLA CRÍTICA: porcPerdida afecta CANTIDAD, no precio
+/// cantidadConPerdida = cantidad * rubroProyecto.cantidad * (1 + porcPerdida/100)
+/// costoTotal = cantidadConPerdida * precioUnitario
+model Insumo {
+  id             String  @id @default(cuid())
+  nombre         String  // Nombre editable (copiado del material maestro)
+  cantidad       Float   // Cantidad por unidad de rubro (copiada, editable)
+  porcPerdida    Float   @default(0) // % → se aplica a cantidad
+  precioUnitario Float   // Precio editable (por defecto del maestro al copiar)
+  esPrecioCustom Boolean @default(false) // true si el usuario alteró el precio
+  esManodeObra   Boolean @default(false)
+  descripcionMO  String?
+
+  unidadMedidaId String?
+  unidadMedida   UnidadMedida? @relation(fields: [unidadMedidaId], references: [id])
+
+  rubroProyectoId String
+  rubroProyecto   RubroProyecto @relation(fields: [rubroProyectoId], references: [id], onDelete: Cascade)
+
+  @@map("insumo")
+}
+
+// ============================================================
+// MÓDULO 3 — CRONOGRAMA Y AVANCES (CURVA S)
+// ============================================================
+
+/// Tarea de microciclo: asigna días de inicio/duración a un rubro del proyecto
+model MicrocicloTarea {
+  id            String   @id @default(cuid())
+  nombre        String   // Nombre descriptivo de la tarea
+  diaInicio     Int      // Día relativo al inicio del proyecto (1-based)
+  duracionDias  Int      // Duración en días
+  // Los mesociclos (semanas/meses) se calculan en runtime a partir de diaInicio+duracion
+
+  rubroProyectoId String
+  rubroProyecto   RubroProyecto @relation(fields: [rubroProyectoId], references: [id], onDelete: Cascade)
+
+  proyectoId String
+  proyecto   Proyecto @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
+
+  avances AvanceTarea[]
+
+  @@map("microciclo_tarea")
+}
+
+/// Registro de avance real para la Curva S
+model AvanceTarea {
+  id            String   @id @default(cuid())
+  fecha         DateTime
+  porcentajeReal Float   // % de avance real registrado (0-100)
+  observacion   String?
+
+  microcicloTareaId String
+  microcicloTarea   MicrocicloTarea @relation(fields: [microcicloTareaId], references: [id], onDelete: Cascade)
+
+  @@map("avance_tarea")
+}
+
+// ============================================================
+// MÓDULO 4 — GESTIÓN DE MANO DE OBRA
+// ============================================================
+
+enum EstadoContrato {
+  ACTIVO
+  PAUSADO
+  FINALIZADO
+  RESCINDIDO
+}
+
+/// Contrato de mano de obra por cuadrilla
+model ContratoManoObra {
+  id                String         @id @default(cuid())
+  descripcion       String
+  jefeCuadrilla     String
+  montoPactado      Float          // Monto total del contrato
+  porcRetencion     Float          @default(0) // % de retención de garantía
+  estado            EstadoContrato @default(ACTIVO)
+  fechaInicio       DateTime?
+  fechaFinEstimada  DateTime?
+
+  proyectoId String
+  proyecto   Proyecto @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
+
+  personal PersonalCuadrilla[]
+  pagos    PagoContrato[]
+
+  // Rubros asignados a este contrato (muchos a muchos)
+  rubrosAsignados ContratoRubroProyecto[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("contrato_mano_obra")
+}
+
+/// Tabla pivote: ContratoManoObra ↔ RubroProyecto (M:M)
+model ContratoRubroProyecto {
+  contratoId      String
+  contrato        ContratoManoObra @relation(fields: [contratoId], references: [id], onDelete: Cascade)
+  rubroProyectoId String
+  rubroProyecto   RubroProyecto    @relation(fields: [rubroProyectoId], references: [id], onDelete: Cascade)
+
+  @@id([contratoId, rubroProyectoId])
+  @@map("contrato_rubro_proyecto")
+}
+
+/// Personal dentro de una cuadrilla
+model PersonalCuadrilla {
+  id        String  @id @default(cuid())
+  nombre    String
+  apellido  String
+  dni       String?
+  rol       String  // Oficial, Medio Oficial, Ayudante, etc.
+  telefono  String?
+
+  contratoId String
+  contrato   ContratoManoObra @relation(fields: [contratoId], references: [id], onDelete: Cascade)
+
+  @@map("personal_cuadrilla")
+}
+
+/// Pagos realizados a un contrato
+model PagoContrato {
+  id          String   @id @default(cuid())
+  monto       Float
+  fecha       DateTime
+  descripcion String?
+  comprobante String?  // Ruta o número de comprobante
+
+  contratoId String
+  contrato   ContratoManoObra @relation(fields: [contratoId], references: [id], onDelete: Cascade)
+
+  @@map("pago_contrato")
+}
+
+// ============================================================
+// MÓDULO 5 — MAQUINARIAS Y LOGÍSTICA (COSTOS INDIRECTOS)
+// ============================================================
+
+enum TipoCostoIndirecto {
+  FLETE
+  ALQUILER_MAQUINARIA
+  HONORARIOS_PROYECTO
+  GASTO_ADMINISTRATIVO
+  SEGURO
+  OTRO
+}
+
+/// Costo Indirecto del proyecto (separado de materiales)
+model CostoIndirecto {
+  id          String              @id @default(cuid())
+  descripcion String
+  tipo        TipoCostoIndirecto
+  monto       Float
+  proveedor   String?
+  fecha       DateTime?
+  comprobante String?
+
+  proyectoId String
+  proyecto   Proyecto @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
+
+  @@map("costo_indirecto")
+}
+
+// ============================================================
+// MÓDULO 6 — EXPORTACIÓN Y PLAN DE PAGOS
+// ============================================================
+
+enum EstadoCuota {
+  PENDIENTE
+  PAGADA
+  VENCIDA
+}
+
+/// Cuota del Plan de Pagos flexible (N cuotas porcentuales)
+/// La suma de porcentaje de todas las cuotas de un proyecto debe ser 100
+model CuotaPago {
+  id          String      @id @default(cuid())
+  numeroCuota Int         // 1, 2, 3...N
+  porcentaje  Float       // % del total del presupuesto que representa esta cuota
+  // montoCalculado = (presupuesto_total * porcentaje / 100) — calculado en runtime
+  descripcion String?     // "Anticipo", "Al completar estructura", "Final de obra", etc.
+  fechaEstimada DateTime?
+  estado      EstadoCuota @default(PENDIENTE)
+  fechaPago   DateTime?   // Fecha real de pago
+
+  proyectoId String
+  proyecto   Proyecto @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
+
+  @@map("cuota_pago")
+}
