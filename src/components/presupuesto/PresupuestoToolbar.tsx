@@ -22,7 +22,18 @@ export function PresupuestoToolbar({
   const filtered = rubrosMaestros.filter(
     (r) =>
       r.nombre.toLowerCase().includes(query.toLowerCase()) ||
-      r.codigo.toLowerCase().includes(query.toLowerCase())
+      r.codigo.toLowerCase().includes(query.toLowerCase()) ||
+      r.categoria.toLowerCase().includes(query.toLowerCase())
+  );
+
+  // Agrupar por categoría preservando el orden de aparición
+  const grupos = filtered.reduce<Record<string, typeof filtered>>(
+    (acc, r) => {
+      if (!acc[r.categoria]) acc[r.categoria] = [];
+      acc[r.categoria].push(r);
+      return acc;
+    },
+    {}
   );
 
   // Cerrar al hacer clic fuera
@@ -82,28 +93,38 @@ export function PresupuestoToolbar({
                 No se encontraron rubros
               </p>
             ) : (
-              filtered.map((r) => (
-                <button
-                  key={r.id}
-                  type="button"
-                  onClick={() => handleSelect(r)}
-                  className="w-full text-left px-3 py-2.5 flex items-center gap-3
-                             dark:hover:bg-slate-800/60 hover:bg-slate-50
-                             border-b dark:border-white/[0.04] border-slate-100 last:border-0
-                             transition-colors duration-100"
-                >
-                  <span className="text-[10px] font-mono dark:text-slate-500 text-slate-400 shrink-0 w-16">
-                    {r.codigo}
-                  </span>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs font-medium dark:text-slate-200 text-slate-700 truncate">
-                      {r.nombre}
-                    </p>
-                    <p className="text-[10px] dark:text-slate-500 text-slate-400">
-                      {r.insumos.length} insumos · {r.unidad}
+              Object.entries(grupos).map(([cat, items]) => (
+                <div key={cat}>
+                  {/* Encabezado de categoría */}
+                  <div className="sticky top-0 px-3 py-1.5 dark:bg-slate-800/80 bg-slate-100/90 backdrop-blur-sm border-b dark:border-white/[0.06] border-slate-200">
+                    <p className="text-[10px] font-semibold uppercase tracking-wider dark:text-slate-400 text-slate-500">
+                      {cat}
                     </p>
                   </div>
-                </button>
+                  {items.map((r) => (
+                    <button
+                      key={r.id}
+                      type="button"
+                      onClick={() => handleSelect(r)}
+                      className="w-full text-left px-3 py-2.5 flex items-center gap-3
+                                 dark:hover:bg-slate-800/60 hover:bg-slate-50
+                                 border-b dark:border-white/[0.04] border-slate-100 last:border-0
+                                 transition-colors duration-100"
+                    >
+                      <span className="text-[10px] font-mono dark:text-slate-500 text-slate-400 shrink-0 w-16">
+                        {r.codigo}
+                      </span>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-medium dark:text-slate-200 text-slate-700 truncate">
+                          {r.nombre}
+                        </p>
+                        <p className="text-[10px] dark:text-slate-500 text-slate-400">
+                          {r.insumos.length} insumos · {r.unidad}
+                        </p>
+                      </div>
+                    </button>
+                  ))}
+                </div>
               ))
             )}
           </div>

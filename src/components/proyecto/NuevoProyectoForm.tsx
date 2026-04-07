@@ -42,7 +42,7 @@ export function NuevoProyectoForm() {
         `Proyecto ${resultado.codigo} creado exitosamente`,
         {
           id: toastId,
-          description: "Redirigiendo al Centro de Mando...",
+          description: "Redirigiendo a Mis Proyectos...",
           duration: 3000,
         }
       );

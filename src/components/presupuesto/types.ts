@@ -18,6 +18,7 @@ export interface InsumoRubro {
 export interface RubroMaestroMock {
   id: string;
   codigo: string;
+  categoria: string; // Grupo para agrupar en el selector
   nombre: string;
   unidad: string;
   insumos: InsumoRubro[];
@@ -36,134 +37,9 @@ export interface RubroProyecto {
 }
 
 // ============================================================
-// DATOS SIMULADOS (Mock) — Reemplazar por fetch Prisma luego
+// DATOS DEL CATÁLOGO — importados desde catalogData.ts
 // ============================================================
-
-export const RUBROS_MAESTROS_MOCK: RubroMaestroMock[] = [
-  {
-    id: "rm-001",
-    codigo: "MAM-001",
-    nombre: "Mampostería de Elevación 0.15m",
-    unidad: "m²",
-    insumos: [
-      {
-        id: "ins-001",
-        nombre: "Ladrillo común",
-        unidad: "un",
-        rendimiento: 65,
-        porcPerdida: 5,
-        precioUnitario: 800,
-        esManodeObra: false,
-      },
-      {
-        id: "ins-002",
-        nombre: "Cemento",
-        unidad: "kg",
-        rendimiento: 5.74,
-        porcPerdida: 3,
-        precioUnitario: 1230,
-        esManodeObra: false,
-      },
-      {
-        id: "ins-003",
-        nombre: "Arena fina",
-        unidad: "m³",
-        rendimiento: 0.028,
-        porcPerdida: 5,
-        precioUnitario: 180000,
-        esManodeObra: false,
-      },
-      {
-        id: "ins-004",
-        nombre: "Mano de Obra — Albañil",
-        unidad: "h",
-        rendimiento: 1.2,
-        porcPerdida: 0,
-        precioUnitario: 25000,
-        esManodeObra: true,
-      },
-    ],
-  },
-  {
-    id: "rm-002",
-    codigo: "EST-001",
-    nombre: "Losa de H°A° e=0.20m",
-    unidad: "m²",
-    insumos: [
-      {
-        id: "ins-010",
-        nombre: "Hormigón H-21",
-        unidad: "m³",
-        rendimiento: 0.22,
-        porcPerdida: 5,
-        precioUnitario: 1200000,
-        esManodeObra: false,
-      },
-      {
-        id: "ins-011",
-        nombre: "Acero Ø12mm",
-        unidad: "kg",
-        rendimiento: 8.5,
-        porcPerdida: 8,
-        precioUnitario: 8500,
-        esManodeObra: false,
-      },
-      {
-        id: "ins-012",
-        nombre: "Encofrado fenólico",
-        unidad: "m²",
-        rendimiento: 1.05,
-        porcPerdida: 10,
-        precioUnitario: 45000,
-        esManodeObra: false,
-      },
-      {
-        id: "ins-013",
-        nombre: "Mano de Obra — Encofrador",
-        unidad: "h",
-        rendimiento: 2.5,
-        porcPerdida: 0,
-        precioUnitario: 28000,
-        esManodeObra: true,
-      },
-    ],
-  },
-  {
-    id: "rm-003",
-    codigo: "REV-001",
-    nombre: "Revoque grueso interior",
-    unidad: "m²",
-    insumos: [
-      {
-        id: "ins-020",
-        nombre: "Cemento",
-        unidad: "kg",
-        rendimiento: 4.5,
-        porcPerdida: 4,
-        precioUnitario: 1230,
-        esManodeObra: false,
-      },
-      {
-        id: "ins-021",
-        nombre: "Cal hidráulica",
-        unidad: "kg",
-        rendimiento: 2.0,
-        porcPerdida: 4,
-        precioUnitario: 650,
-        esManodeObra: false,
-      },
-      {
-        id: "ins-022",
-        nombre: "Arena gruesa",
-        unidad: "m³",
-        rendimiento: 0.022,
-        porcPerdida: 5,
-        precioUnitario: 160000,
-        esManodeObra: false,
-      },
-    ],
-  },
-];
+export { RUBROS_MAESTROS_MOCK } from "./catalogData";
 
 // ============================================================
 // UTILIDADES DE CÁLCULO

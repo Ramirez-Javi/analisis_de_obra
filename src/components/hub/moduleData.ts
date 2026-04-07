@@ -28,7 +28,7 @@ export const MODULES: ModuleDefinition[] = [
     subtitle: "Ficha técnica, propietarios e índice de planos",
     description:
       "Datos generales, propietarios, equipo técnico responsable e índice dinámico de láminas de planos.",
-    href: "/proyectos/nuevo",
+    href: "/proyectos",
     icon: FolderOpen,
     gradient: "from-blue-500 to-cyan-500",
     shadowColor: "shadow-blue-500/20",
