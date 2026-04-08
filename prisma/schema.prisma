@@ -157,12 +157,16 @@ model Empresa {
 // ============================================================
 
 enum EstadoProyecto {
+  ANTEPROYECTO
   BORRADOR
+  PROYECTO_EJECUTIVO
+  CONTRATO_CONFIRMADO
   PRESUPUESTADO
   EN_EJECUCION
   PAUSADO
   FINALIZADO
   CANCELADO
+  OTRO
 }
 
 /// Proyecto principal — núcleo del Hub & Spoke
@@ -175,7 +179,8 @@ model Proyecto {
   superficieM2    Float?
   fechaInicio     DateTime?
   fechaFinEstimada DateTime?
-  estado          EstadoProyecto @default(BORRADOR)
+  duracionSemanas Int?           // Duración planificada en semanas
+  estado          EstadoProyecto @default(ANTEPROYECTO)
 
   // Empresa/estudio responsable (cabezalero de informes)
   empresaId       String?
@@ -200,6 +205,11 @@ model Proyecto {
 
   // Módulo 6: plan de pagos
   planPagos       CuotaPago[]
+
+  // Gestión extendida del proyecto
+  reuniones       Reunion[]
+  anotaciones     Anotacion[]
+  aprobacion      AprobacionProyecto?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -235,12 +245,13 @@ enum RolEquipo {
 
 /// Equipo técnico responsable del proyecto
 model MiembroEquipo {
-  id       String    @id @default(cuid())
-  nombre   String
-  apellido String
-  rol      RolEquipo
-  telefono String?
-  email    String?
+  id        String    @id @default(cuid())
+  nombre    String
+  apellido  String
+  rol       RolEquipo
+  titulo    String?   // Cargo o profesión: "Arq.", "Ing. Civil", custom
+  telefono  String?
+  email     String?
   matricula String?
 
   proyectoId String
@@ -492,4 +503,126 @@ model CuotaPago {
   proyecto   Proyecto @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
 
   @@map("cuota_pago")
+}
+
+// ============================================================
+// MÓDULO 1 EXTENDIDO — GESTIÓN DE PROYECTO
+// ============================================================
+
+enum EstadoReunion {
+  PROGRAMADA
+  REALIZADA
+  CANCELADA
+}
+
+/// Reuniones con propietarios u otras partes interesadas
+model Reunion {
+  id              String        @id @default(cuid())
+  fecha           DateTime
+  hora            String?       // "10:30"
+  lugar           String?
+  temas           String?       // Agenda / temas a tratar
+  acta            String?       // Resumen de la reunión (texto libre)
+  estado          EstadoReunion @default(PROGRAMADA)
+  representantes  String?       // Nombres del equipo que asistirá (texto libre)
+
+  proyectoId String
+  proyecto   Proyecto @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("reunion")
+}
+
+enum CategoriaAnotacion {
+  REUNION
+  MODIFICACION
+  AJUSTE
+  NOTA_LEGAL
+  OTRO
+}
+
+/// Bitácora de anotaciones del proyecto
+model Anotacion {
+  id        String             @id @default(cuid())
+  fecha     DateTime           @default(now())
+  hora      String?
+  categoria CategoriaAnotacion @default(OTRO)
+  titulo    String
+  contenido String
+  autor     String?
+
+  proyectoId String
+  proyecto   Proyecto @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("anotacion")
+}
+
+/// Datos de aprobación y formalización del proyecto
+model AprobacionProyecto {
+  id String @id @default(cuid())
+
+  // Datos contractuales
+  fechaInicioContractual DateTime?
+  fechaFinContractual    DateTime?
+  plazoEnDias            Int?
+  montoContratoGs        Float?
+
+  // Aprobación de Planos
+  fechaAprobacionPlanos    DateTime?
+  firmanteAprobacionPlanos String?
+  obsAprobacionPlanos      String?
+
+  // Aprobación de Presupuesto
+  fechaAprobacionPres    DateTime?
+  firmanteAprobacionPres String?
+  obsAprobacionPres      String?
+
+  // Aprobado por
+  aprobadoPor String?
+
+  // Revisión / Fiscalización
+  revisorNombre    String?
+  revisorProfesion String?
+  fechaRevision    DateTime?
+  obsRevision      String?
+
+  // Responsable del Presupuesto
+  respPresupuesto          String?
+  respPresupuestoProfesion String?
+
+  proyectoId String   @unique
+  proyecto   Proyecto @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("aprobacion_proyecto")
+}
+
+// ============================================================
+// AUTENTICACIÓN — USUARIOS DEL SISTEMA
+// ============================================================
+
+enum RolUsuario {
+  ADMIN
+  USUARIO
+}
+
+model Usuario {
+  id        String     @id @default(cuid())
+  email     String     @unique
+  nombre    String
+  password  String     // bcrypt hash
+  rol       RolUsuario @default(USUARIO)
+  activo    Boolean    @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("usuario")
 }

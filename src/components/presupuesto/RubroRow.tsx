@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useId } from "react";
+import { useState } from "react";
 import {
   ChevronDown,
   ChevronRight,
@@ -58,10 +58,11 @@ interface InsumoRowProps {
   insumo: InsumoRubro;
   cantidadObra: number;
   onChange: (id: string, field: keyof InsumoRubro, value: number) => void;
+  onChangeText: (id: string, field: "nombre" | "unidad", value: string) => void;
   onDelete: (id: string) => void;
 }
 
-function InsumoRow({ insumo, cantidadObra, onChange, onDelete }: InsumoRowProps) {
+function InsumoRow({ insumo, cantidadObra, onChange, onChangeText, onDelete }: InsumoRowProps) {
   const cantReal = calcCantidadReal(cantidadObra, insumo.rendimiento, insumo.porcPerdida);
   const total = calcTotalInsumo(cantidadObra, insumo);
 
@@ -75,12 +76,22 @@ function InsumoRow({ insumo, cantidadObra, onChange, onDelete }: InsumoRowProps)
           ) : (
             <Package size={11} className="dark:text-blue-400 text-blue-500 shrink-0" />
           )}
-          <span className="truncate max-w-[140px]" title={insumo.nombre}>{insumo.nombre}</span>
+          <input
+            type="text"
+            value={insumo.nombre}
+            onChange={(e) => onChangeText(insumo.id, "nombre", e.target.value)}
+            className="bg-transparent text-xs dark:text-slate-100 text-slate-800 focus:outline-none focus:ring-1 focus:ring-teal-500/40 rounded px-1 py-0.5 dark:hover:bg-slate-700/60 hover:bg-slate-100 transition-colors duration-100 w-full min-w-[110px]"
+          />
         </div>
       </td>
       {/* Unidad */}
       <td className="px-2 py-2.5 text-xs text-center dark:text-slate-400 text-slate-500 w-16">
-        {insumo.unidad}
+        <input
+          type="text"
+          value={insumo.unidad}
+          onChange={(e) => onChangeText(insumo.id, "unidad", e.target.value)}
+          className="bg-transparent text-xs dark:text-slate-400 text-slate-500 text-center focus:outline-none focus:ring-1 focus:ring-teal-500/40 rounded px-1 py-0.5 dark:hover:bg-slate-700/60 hover:bg-slate-100 transition-colors duration-100 w-full"
+        />
       </td>
       {/* Rendimiento */}
       <td className="px-2 py-2.5 w-24">
@@ -141,11 +152,12 @@ function InsumoRow({ insumo, cantidadObra, onChange, onDelete }: InsumoRowProps)
 interface InsumosTableProps {
   rubro: RubroProyecto;
   onChange: (id: string, field: keyof InsumoRubro, value: number) => void;
+  onChangeText: (id: string, field: "nombre" | "unidad", value: string) => void;
   onDeleteInsumo: (id: string) => void;
   onAddInsumo: () => void;
 }
 
-function InsumosTable({ rubro, onChange, onDeleteInsumo, onAddInsumo }: InsumosTableProps) {
+function InsumosTable({ rubro, onChange, onChangeText, onDeleteInsumo, onAddInsumo }: InsumosTableProps) {
   const totalMat = rubro.insumos
     .filter((i) => !i.esManodeObra)
     .reduce((acc, i) => acc + calcTotalInsumo(rubro.cantidadObra, i), 0);
@@ -190,6 +202,7 @@ function InsumosTable({ rubro, onChange, onDeleteInsumo, onAddInsumo }: InsumosT
                 insumo={ins}
                 cantidadObra={rubro.cantidadObra}
                 onChange={onChange}
+                onChangeText={onChangeText}
                 onDelete={onDeleteInsumo}
               />
             ))}
@@ -233,7 +246,9 @@ export interface RubroRowProps {
   index: number;
   onToggle: (instanceId: string) => void;
   onCantidadChange: (instanceId: string, value: number) => void;
+  onRubroChange?: (instanceId: string, field: "nombre" | "codigo" | "unidad", value: string) => void;
   onInsumoChange: (instanceId: string, insumoId: string, field: keyof InsumoRubro, value: number) => void;
+  onInsumoChangeText: (instanceId: string, insumoId: string, field: "nombre" | "unidad", value: string) => void;
   onDeleteInsumo: (instanceId: string, insumoId: string) => void;
   onAddInsumo: (instanceId: string) => void;
   onDeleteRubro: (instanceId: string) => void;
@@ -244,7 +259,9 @@ export function RubroRow({
   index,
   onToggle,
   onCantidadChange,
+  onRubroChange,
   onInsumoChange,
+  onInsumoChangeText,
   onDeleteInsumo,
   onAddInsumo,
   onDeleteRubro,
@@ -274,14 +291,38 @@ export function RubroRow({
         {/* Código + Nombre */}
         <div
           className="flex-1 min-w-0 flex items-center gap-2"
-          onClick={() => onToggle(rubro.instanceId)}
+          onClick={() => !rubro.rubroMaestroId && onToggle(rubro.instanceId)}
         >
-          <span className="text-[10px] font-mono dark:text-slate-500 text-slate-400 shrink-0">
-            {rubro.codigo}
-          </span>
-          <span className="text-sm font-medium dark:text-slate-100 text-slate-800 truncate">
-            {rubro.nombre}
-          </span>
+          {rubro.rubroMaestroId === "" ? (
+            <input
+              value={rubro.codigo}
+              onClick={(e) => e.stopPropagation()}
+              onChange={(e) => onRubroChange?.(rubro.instanceId, "codigo", e.target.value)}
+              className="text-[10px] font-mono w-20 bg-transparent border-b dark:border-white/20 border-slate-300 focus:outline-none dark:text-slate-400 text-slate-500 shrink-0"
+            />
+          ) : (
+            <span
+              className="text-[10px] font-mono dark:text-slate-500 text-slate-400 shrink-0"
+              onClick={() => onToggle(rubro.instanceId)}
+            >
+              {rubro.codigo}
+            </span>
+          )}
+          {rubro.rubroMaestroId === "" ? (
+            <input
+              value={rubro.nombre}
+              onClick={(e) => e.stopPropagation()}
+              onChange={(e) => onRubroChange?.(rubro.instanceId, "nombre", e.target.value)}
+              className="text-sm font-medium flex-1 min-w-0 bg-transparent border-b dark:border-white/20 border-slate-300 focus:outline-none dark:text-slate-100 text-slate-800"
+            />
+          ) : (
+            <span
+              className="text-sm font-medium dark:text-slate-100 text-slate-800 truncate"
+              onClick={() => onToggle(rubro.instanceId)}
+            >
+              {rubro.nombre}
+            </span>
+          )}
         </div>
 
         {/* Cantidad en obra */}
@@ -304,7 +345,16 @@ export function RubroRow({
                        transition-colors duration-150"
             onClick={(e) => e.stopPropagation()}
           />
-          <span className="text-xs dark:text-slate-500 text-slate-400 w-8 shrink-0">{rubro.unidad}</span>
+          {rubro.rubroMaestroId === "" ? (
+            <input
+              value={rubro.unidad}
+              onClick={(e) => e.stopPropagation()}
+              onChange={(e) => onRubroChange?.(rubro.instanceId, "unidad", e.target.value)}
+              className="w-10 text-xs text-center bg-transparent border-b dark:border-white/20 border-slate-300 focus:outline-none dark:text-slate-400 text-slate-500 shrink-0"
+            />
+          ) : (
+            <span className="text-xs dark:text-slate-500 text-slate-400 w-8 shrink-0">{rubro.unidad}</span>
+          )}
         </div>
 
         {/* Precio unitario */}
@@ -355,6 +405,7 @@ export function RubroRow({
         <InsumosTable
           rubro={rubro}
           onChange={(insumoId, field, value) => onInsumoChange(rubro.instanceId, insumoId, field, value)}
+          onChangeText={(insumoId, field, value) => onInsumoChangeText(rubro.instanceId, insumoId, field, value)}
           onDeleteInsumo={(insumoId) => onDeleteInsumo(rubro.instanceId, insumoId)}
           onAddInsumo={() => onAddInsumo(rubro.instanceId)}
         />

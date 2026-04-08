@@ -12,19 +12,25 @@ interface Props {
   register: UseFormRegister<NuevoProyectoFormValues>;
   errors: FieldErrors<NuevoProyectoFormValues>;
   setValue: UseFormSetValue<NuevoProyectoFormValues>;
+  initialLogoUrl?: string;
 }
 
-export function EmpresaCard({ register, errors, setValue }: Props) {
+export function EmpresaCard({ register, errors, setValue, initialLogoUrl }: Props) {
   const fileRef = useRef<HTMLInputElement>(null);
-  const [preview, setPreview] = useState<string | null>(null);
+  const [preview, setPreview] = useState<string | null>(initialLogoUrl ?? null);
 
   function handleLogoChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
-    const url = URL.createObjectURL(file);
-    setPreview(url);
-    // Guarda el nombre del archivo en el campo logoUrl (la carga real requiere storage)
-    setValue("empresa.logoUrl", file.name, { shouldDirty: true });
+    const objectUrl = URL.createObjectURL(file);
+    setPreview(objectUrl);
+    // Convierte a base64 para persistir en Empresa.logoUrl de la BD
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      const base64 = (evt.target?.result as string) ?? "";
+      setValue("empresa.logoUrl", base64, { shouldDirty: true });
+    };
+    reader.readAsDataURL(file);
   }
 
   function clearLogo() {

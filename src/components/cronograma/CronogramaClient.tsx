@@ -1,8 +1,10 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
 import { ArrowLeft, Calendar, TrendingUp, Save, Check } from "lucide-react";
+import { calcSubtotalRubro } from "@/components/presupuesto/types";
+import type { RubroProyecto } from "@/components/presupuesto/types";
 import {
   LineChart,
   Line,
@@ -56,35 +58,48 @@ function dayOffset(base: string, target: string): number {
   return Math.round((b - a) / 86_400_000);
 }
 
-// ─── Mock builder ─────────────────────────────────────────────────────────────
+// ─── Presupuesto sync ────────────────────────────────────────────────────────
 
-function buildMocks(today: string): RubroCronograma[] {
-  return [
-    {
-      id: "r1",
-      nombre: "Excavación",
-      total: 5_000_000,
+/**
+ * Synchronizes cronograma rubros with the presupuesto stored in localStorage.
+ * - Rubros that already exist in cronograma keep their timing/avance data.
+ * - New rubros from presupuesto are added with default timing.
+ * - Rubros removed from presupuesto are dropped from cronograma.
+ * - If no presupuesto data exists, returns the existing cronograma as-is.
+ */
+function syncFromPresupuesto(
+  existing: RubroCronograma[],
+  presupuestoRaw: string | null,
+  today: string
+): RubroCronograma[] {
+  if (!presupuestoRaw) return existing;
+  let rubrosPresupuesto: RubroProyecto[] = [];
+  try {
+    rubrosPresupuesto = JSON.parse(presupuestoRaw) as RubroProyecto[];
+  } catch {
+    return existing;
+  }
+  if (rubrosPresupuesto.length === 0) return existing;
+
+  const existingMap = new Map(existing.map((r) => [r.id, r]));
+
+  return rubrosPresupuesto.map((rp) => {
+    const total = calcSubtotalRubro(rp);
+    const prev = existingMap.get(rp.instanceId);
+    if (prev) {
+      // Keep existing timing & avance, update name and total from presupuesto
+      return { ...prev, nombre: rp.nombre, total };
+    }
+    // New rubro: default dates and avance
+    return {
+      id: rp.instanceId,
+      nombre: rp.nombre,
+      total,
       fechaInicio: today,
-      duracion: 5,
-      avanceReal: 100,
-    },
-    {
-      id: "r2",
-      nombre: "Cimiento PBC",
-      total: 15_000_000,
-      fechaInicio: addDaysToStr(today, 5),
-      duracion: 10,
-      avanceReal: 50,
-    },
-    {
-      id: "r3",
-      nombre: "Mampostería",
-      total: 25_000_000,
-      fechaInicio: addDaysToStr(today, 15),
-      duracion: 15,
+      duracion: 7,
       avanceReal: 0,
-    },
-  ];
+    };
+  });
 }
 
 // ─── Bar colors ───────────────────────────────────────────────────────────────
@@ -128,11 +143,15 @@ export function CronogramaClient({ proyecto, backHref, today }: Props) {
   const [rubros, setRubros] = useState<RubroCronograma[]>(() => {
     try {
       if (typeof window !== "undefined") {
-        const raw = localStorage.getItem(`cronograma_${proyecto.id}`);
-        if (raw) return JSON.parse(raw) as RubroCronograma[];
+        const cronogramaRaw = localStorage.getItem(`cronograma_${proyecto.id}`);
+        const existing: RubroCronograma[] = cronogramaRaw
+          ? (JSON.parse(cronogramaRaw) as RubroCronograma[])
+          : [];
+        const presupuestoRaw = localStorage.getItem(`presupuesto_${proyecto.id}`);
+        return syncFromPresupuesto(existing, presupuestoRaw, today);
       }
     } catch {}
-    return buildMocks(today);
+    return [];
   });
 
   const [savedKey, setSavedKey] = useState<string>(() => {
@@ -142,10 +161,22 @@ export function CronogramaClient({ proyecto, backHref, today }: Props) {
         if (raw) return raw;
       }
     } catch {}
-    return JSON.stringify(buildMocks(today));
+    return "[]";
   });
 
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved">("idle");
+
+  // Re-sync with presupuesto whenever the user navigates back to this tab
+  // (covers the case where rubros were added/removed in the presupuesto module)
+  useEffect(() => {
+    function handleFocus() {
+      const presupuestoRaw = localStorage.getItem(`presupuesto_${proyecto.id}`);
+      if (!presupuestoRaw) return;
+      setRubros((prev) => syncFromPresupuesto(prev, presupuestoRaw, today));
+    }
+    window.addEventListener("focus", handleFocus);
+    return () => window.removeEventListener("focus", handleFocus);
+  }, [proyecto.id, today]);
 
   // ── Derived: project span ────────────────────────────────────────────────
   const { projectStart, totalDays } = useMemo(() => {
@@ -316,7 +347,25 @@ export function CronogramaClient({ proyecto, backHref, today }: Props) {
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-6">
+      {rubros.length === 0 ? (
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-16 text-center">
+          <Calendar className="w-12 h-12 mx-auto mb-4 dark:text-slate-600 text-slate-300" />
+          <h2 className="text-base font-semibold dark:text-slate-300 text-slate-600 mb-1">
+            No hay rubros en el presupuesto
+          </h2>
+          <p className="text-sm dark:text-slate-500 text-slate-400">
+            Primero cargá los rubros en el módulo de{" "}
+            <Link
+              href={backHref.replace(/\/cronograma$/, "/presupuesto")}
+              className="underline underline-offset-2 dark:text-teal-400 text-teal-600 hover:opacity-80"
+            >
+              Cómputo y Presupuesto
+            </Link>
+            {" "}y luego volvé aquí para planificar los tiempos.
+          </p>
+        </div>
+      ) : (
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-6">
         {/* ════════════════════════════════════════════════════════════════
             VISTA 1 — PLANIFICACIÓN (GANTT)
         ════════════════════════════════════════════════════════════════ */}
@@ -734,7 +783,8 @@ export function CronogramaClient({ proyecto, backHref, today }: Props) {
             </div>
           </div>
         )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }

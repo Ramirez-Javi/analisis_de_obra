@@ -2,8 +2,19 @@ import type { UseFormRegister, FieldErrors } from "react-hook-form";
 import { FileText } from "lucide-react";
 import { FormCard } from "../ui/FormCard";
 import { FormField } from "../ui/FormField";
-import { inputCls, textareaCls } from "../ui/styles";
+import { inputCls, selectCls, textareaCls } from "../ui/styles";
 import type { NuevoProyectoFormValues } from "../types";
+
+const ESTADOS: { value: string; label: string }[] = [
+  { value: "ANTEPROYECTO",        label: "Anteproyecto" },
+  { value: "BORRADOR",            label: "Borrador" },
+  { value: "PROYECTO_EJECUTIVO",  label: "Proyecto Ejecutivo" },
+  { value: "CONTRATO_CONFIRMADO", label: "Contrato Confirmado" },
+  { value: "EN_EJECUCION",        label: "En Ejecución" },
+  { value: "PAUSADO",             label: "Pausado" },
+  { value: "FINALIZADO",          label: "Finalizado" },
+  { value: "OTRO",                label: "Otro" },
+];
 
 interface Props {
   register: UseFormRegister<NuevoProyectoFormValues>;
@@ -18,6 +29,7 @@ export function DatosGeneralesCard({ register, errors }: Props) {
       icon={FileText}
       iconGradient="from-blue-500 to-cyan-500"
     >
+      {/* Nombre + Código */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <FormField label="Nombre del Proyecto" required error={errors.nombre?.message}>
           <input
@@ -26,6 +38,20 @@ export function DatosGeneralesCard({ register, errors }: Props) {
             className={inputCls}
           />
         </FormField>
+        <FormField label="Código de Obra" required error={errors.codigo?.message}>
+          <input
+            {...register("codigo", { required: "El código es obligatorio" })}
+            placeholder="Ej: GTZ-01-2026"
+            className={inputCls}
+          />
+          <p className="text-[11px] dark:text-slate-500 text-slate-400 mt-1">
+            Código único definido por tu empresa o estudio (Ej: GTZ-01-2026).
+          </p>
+        </FormField>
+      </div>
+
+      {/* Ubicación + Estado */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <FormField label="Ubicación" error={errors.ubicacion?.message}>
           <input
             {...register("ubicacion")}
@@ -33,7 +59,42 @@ export function DatosGeneralesCard({ register, errors }: Props) {
             className={inputCls}
           />
         </FormField>
+        <FormField label="Estado del Proyecto" error={errors.estado?.message}>
+          <select {...register("estado")} className={selectCls}>
+            {ESTADOS.map((e) => (
+              <option key={e.value} value={e.value}>
+                {e.label}
+              </option>
+            ))}
+          </select>
+        </FormField>
       </div>
+
+      {/* Fecha de inicio + Duración */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <FormField label="Fecha de Inicio del Proyecto" error={errors.fechaInicio?.message}>
+          <input
+            type="date"
+            {...register("fechaInicio")}
+            className={inputCls}
+          />
+        </FormField>
+        <FormField label="Duración de la Obra (semanas)" error={errors.duracionSemanas?.message}>
+          <input
+            type="number"
+            min={1}
+            max={520}
+            {...register("duracionSemanas")}
+            placeholder="Ej: 24"
+            className={inputCls}
+          />
+          <p className="text-[11px] dark:text-slate-500 text-slate-400 mt-1">
+            La fecha de finalización se define en el Cronograma de Avance.
+          </p>
+        </FormField>
+      </div>
+
+      {/* Descripción */}
       <FormField label="Descripción / Detalles Estratégicos" error={errors.descripcion?.message}>
         <textarea
           {...register("descripcion")}

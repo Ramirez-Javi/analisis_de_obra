@@ -27,13 +27,20 @@ export interface LaminaInput {
 
 export interface NuevoProyectoFormValues {
   empresa: EmpresaInput;
+  codigo: string;         // REQUIRED — debe ser ingresado manualmente
   nombre: string;
   ubicacion: string;
   descripcion: string;
+  estado: string;         // EstadoProyecto enum value
+  fechaInicio: string;    // YYYY-MM-DD
+  duracionSemanas: string; // Cantidad de semanas (convertido a Int al guardar)
   propietarios: PropietarioInput[];
   equipoElaboracion: string;
+  equipoElaboracionCargo: string;
   equipoPlanos: string;
+  equipoPlanosCargo: string;
   equipoRenders: string;
+  equipoRendersCargo: string;
   laminas: LaminaInput[];
 }
 
@@ -49,12 +56,19 @@ export const defaultFormValues: NuevoProyectoFormValues = {
     pais: "",
     logoUrl: "",
   },
+  codigo: "",
   nombre: "",
   ubicacion: "",
   descripcion: "",
+  estado: "ANTEPROYECTO",
+  fechaInicio: "",
+  duracionSemanas: "",
   propietarios: [{ nombre: "", direccion: "", telefono: "", email: "" }],
   equipoElaboracion: "",
+  equipoElaboracionCargo: "",
   equipoPlanos: "",
+  equipoPlanosCargo: "",
   equipoRenders: "",
+  equipoRendersCargo: "",
   laminas: [{ codigo: "", nombre: "" }],
 };

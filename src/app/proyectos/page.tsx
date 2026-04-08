@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ArrowLeft, Plus, FolderOpen, MapPin, User, ArrowRight, Calculator } from "lucide-react";
 import { prisma } from "@/lib/prisma";
+import { DeleteProyectoButton } from "@/components/proyecto/DeleteProyectoButton";
 
 async function getProyectos() {
   return prisma.proyecto.findMany({
@@ -143,13 +144,16 @@ export default async function ProyectosLobbyPage() {
 
                 {/* Barra inferior de acciones */}
                 <div className="flex items-center justify-between gap-2 px-5 py-3 border-t dark:border-white/[0.05] border-slate-100">
-                  <Link
-                    href={`/proyectos/${p.id}/ficha`}
-                    className="flex items-center gap-1.5 text-xs font-medium dark:text-slate-400 text-slate-500 dark:hover:text-slate-200 hover:text-slate-700 transition-colors duration-150"
-                  >
-                    <ArrowRight size={12} />
-                    Ver ficha
-                  </Link>
+                  <div className="flex items-center gap-2">
+                    <Link
+                      href={`/proyectos/${p.id}/ficha`}
+                      className="flex items-center gap-1.5 text-xs font-medium dark:text-slate-400 text-slate-500 dark:hover:text-slate-200 hover:text-slate-700 transition-colors duration-150"
+                    >
+                      <ArrowRight size={12} />
+                      Ver ficha
+                    </Link>
+                    <DeleteProyectoButton id={p.id} nombre={p.nombre} />
+                  </div>
                   <Link
                     href={`/proyectos/${p.id}/presupuesto`}
                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold transition-colors duration-150 shadow-md shadow-emerald-500/20"
