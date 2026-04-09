@@ -5,7 +5,7 @@ import { PresupuestoClient } from "@/components/presupuesto/PresupuestoClient";
 async function getProyecto(id: string) {
   return prisma.proyecto.findUnique({
     where: { id },
-    select: { id: true, codigo: true, nombre: true },
+    select: { id: true, codigo: true, nombre: true, superficieM2: true },
   });
 }
 

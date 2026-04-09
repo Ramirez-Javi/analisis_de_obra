@@ -3,6 +3,8 @@
 import { useState, useMemo } from "react";
 import Link from "next/link";
 import { ArrowLeft, Truck, Wrench, PackageOpen, Plus, Trash2 } from "lucide-react";
+import { AsignarProyectoWidget } from "@/components/shared/AsignarProyectoWidget";
+import type { ProyectoSimple } from "@/app/actions/proyectos";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -529,12 +531,14 @@ interface LogisticaClientProps {
   backHref: string;
   proyecto?: { id: string; codigo: string; nombre: string };
   stickyTop?: string;
+  proyectosDisponibles?: ProyectoSimple[];
 }
 
 export function LogisticaClient({
   backHref,
   proyecto,
   stickyTop = "top-0",
+  proyectosDisponibles = [],
 }: LogisticaClientProps) {
   const [equipos, setEquipos] = useState<EquipoRubro[]>(EQUIPOS_INICIALES);
   const [gastos, setGastos] = useState<GastoLogistico[]>(GASTOS_INICIALES);
@@ -575,6 +579,14 @@ export function LogisticaClient({
               {proyecto ? `${proyecto.codigo} · ` : ""}Costos indirectos de obra
             </p>
           </div>
+
+          {!proyecto && proyectosDisponibles.length > 0 && (
+            <AsignarProyectoWidget
+              proyectos={proyectosDisponibles}
+              mode="nav"
+              moduloPath="logistica"
+            />
+          )}
 
           {/* KPI total global */}
           <div className="shrink-0 text-right">

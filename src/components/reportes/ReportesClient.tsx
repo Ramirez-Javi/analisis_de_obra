@@ -67,6 +67,7 @@ export interface ProyectoReporte {
   descripcion?: string | null;
   ubicacion?: string | null;
   superficieM2?: number | null;
+  superficieTerreno?: number | null;
   fechaInicio?: Date | string | null;
   fechaFinEstimada?: Date | string | null;
   estado?: string;
@@ -282,8 +283,10 @@ const PRINT_BASE_STYLES = `
   .report-title { text-align: center; margin: 10pt 0 14pt; }
   .report-title h1 { font-size: 15pt; }
   .report-title p { font-size: 9pt; color: #666; margin-top: 3pt; }
-  .ficha-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 3pt 28pt; margin-bottom: 10pt; }
+  .ficha-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 3pt 28pt; margin-bottom: 5pt; }
   .ficha-item { display: flex; gap: 5pt; font-size: 9pt; }
+  .ficha-desc { display: flex; gap: 5pt; font-size: 9pt; width: 100%; margin-bottom: 8pt; }
+  .ficha-desc .ficha-label { min-width: 100pt; flex-shrink: 0; }
   .ficha-label { color: #666; min-width: 100pt; }
   .ficha-section-title { font-size: 8pt; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5pt; color: #888; margin: 8pt 0 4pt; }
   .rubro-header { background: #e8eaf6; padding: 4pt 6pt; font-size: 9pt; display: flex; justify-content: space-between; border: 0.5pt solid #bbb; }
@@ -846,21 +849,25 @@ function FichaSection({ proyecto }: { proyecto?: ProyectoReporte }) {
         ESTADOS_LABEL[proyecto.estado ?? ""] ?? proyecto.estado ?? "—",
     },
     {
-      label: "Sup. total (m²)",
-      value: proyecto.superficieM2 ? fmtNum(proyecto.superficieM2) : "—",
+      label: "Sup. a construir (m²)",
+      value: proyecto.superficieM2 ? fmtNum(proyecto.superficieM2) + " m²" : "—",
+    },
+    {
+      label: "Sup. del terreno (m²)",
+      value: proyecto.superficieTerreno ? fmtNum(proyecto.superficieTerreno) + " m²" : "—",
     },
     { label: "Fecha inicio", value: fmtDate(proyecto.fechaInicio) },
     { label: "Fecha fin est.", value: fmtDate(proyecto.fechaFinEstimada) },
   ];
-  if (proyecto.descripcion)
-    rows.push({ label: "Descripción", value: proyecto.descripcion });
+
+  const descripcion = proyecto.descripcion ?? null;
 
   return (
     <div className="mb-6">
       <h2 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">
         Ficha del Proyecto
       </h2>
-      <div className="ficha-grid grid grid-cols-2 gap-x-8 gap-y-1.5 text-sm mb-4">
+      <div className="ficha-grid grid grid-cols-2 gap-x-8 gap-y-1.5 text-sm mb-2">
         {rows.map((r) => (
           <div key={r.label} className="ficha-item flex gap-2">
             <span className="ficha-label text-slate-500 dark:text-slate-400 min-w-[130px] shrink-0">
@@ -872,6 +879,17 @@ function FichaSection({ proyecto }: { proyecto?: ProyectoReporte }) {
           </div>
         ))}
       </div>
+
+      {descripcion && (
+        <div className="ficha-desc flex gap-2 text-sm mb-4">
+          <span className="ficha-label text-slate-500 dark:text-slate-400 min-w-[130px] shrink-0">
+            Descripción:
+          </span>
+          <span className="dark:text-slate-200 text-slate-800 flex-1">
+            {descripcion}
+          </span>
+        </div>
+      )}
 
       {(proyecto.propietarios?.length ?? 0) > 0 && (
         <div className="mb-4">
@@ -919,9 +937,11 @@ function FichaSection({ proyecto }: { proyecto?: ProyectoReporte }) {
 function PresupuestoClienteTable({
   rubros,
   montoContrato,
+  superficieM2,
 }: {
   rubros: RubroProyecto[];
   montoContrato: number;
+  superficieM2?: number | null;
 }) {
   const totalGeneral = rubros.reduce(
     (acc, r) => acc + calcSubtotalRubro(r),
@@ -1042,6 +1062,19 @@ function PresupuestoClienteTable({
                   </tr>
                 </>
               )}
+              {superficieM2 && superficieM2 > 0 && (
+                <tr className="bg-purple-50 dark:bg-purple-950/20">
+                  <td
+                    colSpan={5}
+                    className="border border-slate-200 dark:border-slate-700 px-2 py-1.5 text-right text-purple-700 dark:text-purple-400 font-semibold"
+                  >
+                    Costo por m² ({fmtNum(superficieM2)} m² a construir)
+                  </td>
+                  <td className="border border-slate-200 dark:border-slate-700 px-2 py-1.5 text-right text-purple-700 dark:text-purple-400 font-semibold">
+                    Gs {fmtGs(totalGeneral / superficieM2)}
+                  </td>
+                </tr>
+              )}
             </tfoot>
           </table>
         </>
@@ -1052,8 +1085,10 @@ function PresupuestoClienteTable({
 
 function PresupuestoProfesionalTable({
   rubros,
+  superficieM2,
 }: {
   rubros: RubroProyecto[];
+  superficieM2?: number | null;
 }) {
   const totalMat = rubros.reduce(
     (acc, r) =>
@@ -1218,6 +1253,12 @@ function PresupuestoProfesionalTable({
               <span>TOTAL GENERAL</span>
               <span>Gs {fmtGs(totalGeneral)}</span>
             </div>
+            {superficieM2 && superficieM2 > 0 && (
+              <div className="flex justify-between px-4 py-2.5 bg-purple-700 dark:bg-purple-800 text-white font-bold text-sm">
+                <span>COSTO POR M² ({fmtNum(superficieM2)} m² a construir)</span>
+                <span>Gs {fmtGs(totalGeneral / superficieM2)}</span>
+              </div>
+            )}
           </div>
         </>
       )}
@@ -2330,6 +2371,7 @@ export default function ReportesClient({
               <PresupuestoClienteTable
                 rubros={rubros}
                 montoContrato={montoContrato}
+                superficieM2={proyecto?.superficieM2}
               />
               <CopyrightFooter />
             </div>
@@ -2355,7 +2397,7 @@ export default function ReportesClient({
                 </p>
               </div>
               <FichaSection proyecto={proyecto} />
-              <PresupuestoProfesionalTable rubros={rubros} />
+              <PresupuestoProfesionalTable rubros={rubros} superficieM2={proyecto?.superficieM2} />
               <div className="section-break border-t-2 border-slate-200 dark:border-slate-700 mt-8 pt-8">
                 <ConsolidadoTable rubros={rubros} />
               </div>

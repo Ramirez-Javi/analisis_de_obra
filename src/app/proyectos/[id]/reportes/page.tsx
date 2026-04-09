@@ -12,6 +12,7 @@ async function getProyecto(id: string) {
       descripcion: true,
       ubicacion: true,
       superficieM2: true,
+      superficieTerreno: true,
       fechaInicio: true,
       fechaFinEstimada: true,
       estado: true,

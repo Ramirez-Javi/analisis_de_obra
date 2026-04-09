@@ -17,6 +17,8 @@ async function getProyectoParaEditar(id: string) {
       estado: true,
       fechaInicio: true,
       duracionSemanas: true,
+      superficieM2: true,
+      superficieTerreno: true,
       empresa: {
         select: {
           nombre: true,
@@ -77,6 +79,8 @@ export default async function EditarProyectoPage({
     estado:          p.estado          ?? "ANTEPROYECTO",
     fechaInicio:     p.fechaInicio ? p.fechaInicio.toISOString().slice(0, 10) : "",
     duracionSemanas: p.duracionSemanas != null ? String(p.duracionSemanas) : "",
+    superficieM2:    p.superficieM2 != null ? String(p.superficieM2) : "",
+    superficieTerreno: p.superficieTerreno != null ? String(p.superficieTerreno) : "",
     propietarios:
       p.propietarios.length > 0
         ? p.propietarios.map((prop) => ({

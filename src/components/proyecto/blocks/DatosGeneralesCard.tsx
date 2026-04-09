@@ -94,6 +94,36 @@ export function DatosGeneralesCard({ register, errors }: Props) {
         </FormField>
       </div>
 
+      {/* Superficie m² */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <FormField label="Superficie a Construir (m²)" error={errors.superficieM2?.message}>
+          <input
+            type="number"
+            min={1}
+            step="0.01"
+            {...register("superficieM2")}
+            placeholder="Ej: 192"
+            className={inputCls}
+          />
+          <p className="text-[11px] dark:text-slate-500 text-slate-400 mt-1">
+            Área construible. Se usa para calcular el Costo/m² en el Presupuesto.
+          </p>
+        </FormField>
+        <FormField label="Superficie del Terreno (m²)" error={errors.superficieTerreno?.message}>
+          <input
+            type="number"
+            min={1}
+            step="0.01"
+            {...register("superficieTerreno")}
+            placeholder="Ej: 400"
+            className={inputCls}
+          />
+          <p className="text-[11px] dark:text-slate-500 text-slate-400 mt-1">
+            Área total del terreno o lote.
+          </p>
+        </FormField>
+      </div>
+
       {/* Descripción */}
       <FormField label="Descripción / Detalles Estratégicos" error={errors.descripcion?.message}>
         <textarea

@@ -273,7 +273,7 @@ export const RUBROS_MAESTROS_MOCK: RubroMaestroMock[] = [
     id: "rm-0019",
     codigo: "R-019",
     categoria: "Mamposterías",
-    nombre: "De Nivelación — Ladrillo común 0.30 m de ancho",
+    nombre: "Mampostería de Nivelación — Ladrillo Común 0.30 m de Ancho",
     unidad: "m²",
     insumos: [
       { id: "ins-00107", nombre: "Ladrillo común", unidad: "un", rendimiento: 122, porcPerdida: 0, precioUnitario: 800, esManodeObra: false },
@@ -287,7 +287,7 @@ export const RUBROS_MAESTROS_MOCK: RubroMaestroMock[] = [
     id: "rm-0020",
     codigo: "R-020",
     categoria: "Mamposterías",
-    nombre: "De 0.30 m armada (1:4)",
+    nombre: "Mampostería de 0.30 m Armada (1:4)",
     unidad: "m²",
     insumos: [
       { id: "ins-00112", nombre: "Ladrillo común", unidad: "un", rendimiento: 122, porcPerdida: 0, precioUnitario: 800, esManodeObra: false },
@@ -301,7 +301,7 @@ export const RUBROS_MAESTROS_MOCK: RubroMaestroMock[] = [
     id: "rm-0021",
     codigo: "R-021",
     categoria: "Mamposterías",
-    nombre: "De 0.45 m de ancho (1:2:8)",
+    nombre: "Mampostería de 0.45 m de Ancho (1:2:8)",
     unidad: "m²",
     insumos: [
       { id: "ins-00117", nombre: "Ladrillo común", unidad: "un", rendimiento: 187, porcPerdida: 0, precioUnitario: 800, esManodeObra: false },
@@ -315,7 +315,7 @@ export const RUBROS_MAESTROS_MOCK: RubroMaestroMock[] = [
     id: "rm-0022",
     codigo: "R-022",
     categoria: "Mamposterías",
-    nombre: "De Elevación — Ladrillo común 0.15 m (1:2:10)",
+    nombre: "Mampostería de Elevación — Ladrillo Común 0.15 m (1:2:10)",
     unidad: "m²",
     insumos: [
       { id: "ins-00122", nombre: "Ladrillo común", unidad: "un", rendimiento: 65, porcPerdida: 0, precioUnitario: 800, esManodeObra: false },
@@ -329,7 +329,7 @@ export const RUBROS_MAESTROS_MOCK: RubroMaestroMock[] = [
     id: "rm-0023",
     codigo: "R-023",
     categoria: "Mamposterías",
-    nombre: "De 0.15 m (1:2:8) — A la vista",
+    nombre: "Mampostería de 0.15 m (1:2:8) — A la Vista",
     unidad: "m²",
     insumos: [
       { id: "ins-00127", nombre: "Ladrillo común", unidad: "un", rendimiento: 95, porcPerdida: 0, precioUnitario: 800, esManodeObra: false },
@@ -343,7 +343,7 @@ export const RUBROS_MAESTROS_MOCK: RubroMaestroMock[] = [
     id: "rm-0024",
     codigo: "R-024",
     categoria: "Mamposterías",
-    nombre: "De 0.20 m (1:2:10)",
+    nombre: "Mampostería de 0.20 m (1:2:10)",
     unidad: "m²",
     insumos: [
       { id: "ins-00132", nombre: "Ladrillo común", unidad: "un", rendimiento: 95, porcPerdida: 0, precioUnitario: 800, esManodeObra: false },
@@ -357,7 +357,7 @@ export const RUBROS_MAESTROS_MOCK: RubroMaestroMock[] = [
     id: "rm-0025",
     codigo: "R-025",
     categoria: "Mamposterías",
-    nombre: "De 0.20 m (1:2:10) — A la vista",
+    nombre: "Mampostería de 0.20 m (1:2:10) — A la Vista",
     unidad: "m²",
     insumos: [
       { id: "ins-00137", nombre: "Ladrillo común", unidad: "un", rendimiento: 95, porcPerdida: 0, precioUnitario: 800, esManodeObra: false },
@@ -371,7 +371,7 @@ export const RUBROS_MAESTROS_MOCK: RubroMaestroMock[] = [
     id: "rm-0026",
     codigo: "R-026",
     categoria: "Mamposterías",
-    nombre: "De 0.30 m (1:2:10)",
+    nombre: "Mampostería de 0.30 m (1:2:10)",
     unidad: "m²",
     insumos: [
       { id: "ins-00142", nombre: "Ladrillo común", unidad: "un", rendimiento: 122, porcPerdida: 0, precioUnitario: 800, esManodeObra: false },
@@ -385,7 +385,7 @@ export const RUBROS_MAESTROS_MOCK: RubroMaestroMock[] = [
     id: "rm-0027",
     codigo: "R-027",
     categoria: "Mamposterías",
-    nombre: "De 0.07 m (1:2:10) — junta 1,5 cm",
+    nombre: "Mampostería de 0.07 m (1:2:10) — Junta 1,5 cm",
     unidad: "m²",
     insumos: [
       { id: "ins-00147", nombre: "Ladrillo común", unidad: "un", rendimiento: 30, porcPerdida: 0, precioUnitario: 800, esManodeObra: false },
@@ -399,7 +399,7 @@ export const RUBROS_MAESTROS_MOCK: RubroMaestroMock[] = [
     id: "rm-0028",
     codigo: "R-028",
     categoria: "Mamposterías",
-    nombre: "De Elevación — Ladrillo cerámico hueco, junta 1,5 cm",
+    nombre: "Mampostería de Elevación — Ladrillo Cerámico Hueco, Junta 1,5 cm",
     unidad: "m²",
     insumos: [
       { id: "ins-00152", nombre: "Ladrillo 8 tubos de 1ra, 12x18x25 cm", unidad: "un", rendimiento: 20, porcPerdida: 0, precioUnitario: 1738, esManodeObra: false },
@@ -413,7 +413,7 @@ export const RUBROS_MAESTROS_MOCK: RubroMaestroMock[] = [
     id: "rm-0029",
     codigo: "R-029",
     categoria: "Mamposterías",
-    nombre: "De 0.15 m (1:2:8) — 1 cara vista",
+    nombre: "Mampostería de 0.15 m (1:2:8) — 1 Cara Vista",
     unidad: "m²",
     insumos: [
       { id: "ins-00157", nombre: "Ladrillo hueco 18x18x25 cm", unidad: "un", rendimiento: 19, porcPerdida: 0, precioUnitario: 2200, esManodeObra: false },
@@ -427,7 +427,7 @@ export const RUBROS_MAESTROS_MOCK: RubroMaestroMock[] = [
     id: "rm-0030",
     codigo: "R-030",
     categoria: "Mamposterías",
-    nombre: "De 0.20 m (1:2:8)",
+    nombre: "Mampostería de 0.20 m (1:2:8)",
     unidad: "m²",
     insumos: [
       { id: "ins-00162", nombre: "Ladrillo 8 tubos de 1ra, 6x12x25 cm", unidad: "un", rendimiento: 41, porcPerdida: 0, precioUnitario: 1452, esManodeObra: false },
@@ -441,7 +441,7 @@ export const RUBROS_MAESTROS_MOCK: RubroMaestroMock[] = [
     id: "rm-0031",
     codigo: "R-031",
     categoria: "Mamposterías",
-    nombre: "De Elevación a la Vista — Ladrillo cerámico laminado, junta 1,5 cm",
+    nombre: "Mampostería de Elevación a la Vista — Ladrillo Cerámico Laminado, Junta 1,5 cm",
     unidad: "m²",
     insumos: [
       { id: "ins-00167", nombre: "Ladrillo de 1ra A, 6x12x25 cm", unidad: "un", rendimiento: 45, porcPerdida: 0, precioUnitario: 1062, esManodeObra: false },
@@ -550,7 +550,7 @@ export const RUBROS_MAESTROS_MOCK: RubroMaestroMock[] = [
     id: "rm-0039",
     codigo: "R-039",
     categoria: "Aislaciones",
-    nombre: "Horizontal 0.15 con asfalto",
+    nombre: "Aislación Horizontal 0.15 m con Asfalto",
     unidad: "ml",
     insumos: [
       { id: "ins-00204", nombre: "Cemento tipo 1", unidad: "kg", rendimiento: 1, porcPerdida: 0, precioUnitario: 1230, esManodeObra: false },
@@ -563,7 +563,7 @@ export const RUBROS_MAESTROS_MOCK: RubroMaestroMock[] = [
     id: "rm-0040",
     codigo: "R-040",
     categoria: "Aislaciones",
-    nombre: "Vertical con Panderete 0.15 m",
+    nombre: "Aislación Vertical con Panderete 0.15 m",
     unidad: "m²",
     insumos: [
       { id: "ins-00208", nombre: "Ladrillo común", unidad: "un", rendimiento: 27, porcPerdida: 0, precioUnitario: 800, esManodeObra: false },
@@ -577,7 +577,7 @@ export const RUBROS_MAESTROS_MOCK: RubroMaestroMock[] = [
     id: "rm-0041",
     codigo: "R-041",
     categoria: "Aislaciones",
-    nombre: "De Losa con Piso de Tejuelita Prensada",
+    nombre: "Aislación de Losa con Piso de Tejuelita Prensada",
     unidad: "m²",
     insumos: [
       { id: "ins-00213", nombre: "Cascotillo cerámico", unidad: "m³", rendimiento: 0.07, porcPerdida: 0, precioUnitario: 150000, esManodeObra: false },
@@ -595,7 +595,7 @@ export const RUBROS_MAESTROS_MOCK: RubroMaestroMock[] = [
     id: "rm-0042",
     codigo: "R-042",
     categoria: "Aislaciones",
-    nombre: "De Losa Para Baño",
+    nombre: "Aislación de Losa para Baño",
     unidad: "m²",
     insumos: [
       { id: "ins-00222", nombre: "Cemento tipo 1", unidad: "kg", rendimiento: 7, porcPerdida: 0, precioUnitario: 1230, esManodeObra: false },
@@ -609,7 +609,7 @@ export const RUBROS_MAESTROS_MOCK: RubroMaestroMock[] = [
     id: "rm-0043",
     codigo: "R-043",
     categoria: "Aislaciones",
-    nombre: "AISLACION Horizontal 0.30 con asfalto",
+    nombre: "Aislación Horizontal 0.30 m con Asfalto",
     unidad: "ml",
     insumos: [
       { id: "ins-00227", nombre: "Cemento tipo 1", unidad: "kg", rendimiento: 1.8, porcPerdida: 0, precioUnitario: 1230, esManodeObra: false },
@@ -622,7 +622,7 @@ export const RUBROS_MAESTROS_MOCK: RubroMaestroMock[] = [
     id: "rm-0044",
     codigo: "R-044",
     categoria: "Aislaciones",
-    nombre: "DINTEL — Varilla Sobre Abertura",
+    nombre: "Dintel — Varilla Sobre Abertura",
     unidad: "ml",
     insumos: [
       { id: "ins-00231", nombre: "Cemento tipo 1", unidad: "kg", rendimiento: 3, porcPerdida: 0, precioUnitario: 1230, esManodeObra: false },
@@ -635,7 +635,7 @@ export const RUBROS_MAESTROS_MOCK: RubroMaestroMock[] = [
     id: "rm-0045",
     codigo: "R-045",
     categoria: "Contrapisos",
-    nombre: "De Hormigón Prefabricado 8 cm (1:4:1:4:6)",
+    nombre: "Contrapiso de Hormigón Prefabricado 8 cm (1:4:1:4:6)",
     unidad: "ml",
     insumos: [
       { id: "ins-00235", nombre: "Cemento tipo 1", unidad: "kg", rendimiento: 4, porcPerdida: 0, precioUnitario: 1230, esManodeObra: false },
@@ -648,7 +648,7 @@ export const RUBROS_MAESTROS_MOCK: RubroMaestroMock[] = [
     id: "rm-0046",
     codigo: "R-046",
     categoria: "Contrapisos",
-    nombre: "De 10 cm (1:4:1:4:6)",
+    nombre: "Contrapiso de 10 cm (1:4:1:4:6)",
     unidad: "m²",
     insumos: [
       { id: "ins-00239", nombre: "Cemento tipo 1", unidad: "kg", rendimiento: 5, porcPerdida: 0, precioUnitario: 1230, esManodeObra: false },
@@ -662,7 +662,7 @@ export const RUBROS_MAESTROS_MOCK: RubroMaestroMock[] = [
     id: "rm-0047",
     codigo: "R-047",
     categoria: "Contrapisos",
-    nombre: "De 20 cm en Losa Sanitaria",
+    nombre: "Contrapiso de 20 cm en Losa Sanitaria",
     unidad: "m²",
     insumos: [
       { id: "ins-00244", nombre: "Cemento tipo 1", unidad: "kg", rendimiento: 7, porcPerdida: 0, precioUnitario: 1230, esManodeObra: false },
@@ -676,7 +676,7 @@ export const RUBROS_MAESTROS_MOCK: RubroMaestroMock[] = [
     id: "rm-0048",
     codigo: "R-048",
     categoria: "Revoques",
-    nombre: "REVOQUES — 1 Capa 1.5 cm (1:4:16) con hidrófugo",
+    nombre: "Revoque — 1 Capa 1.5 cm (1:4:16) con Hidrófugo",
     unidad: "m²",
     insumos: [
       { id: "ins-00249", nombre: "Cemento tipo 1", unidad: "kg", rendimiento: 1.5, porcPerdida: 0, precioUnitario: 1230, esManodeObra: false },
@@ -690,7 +690,7 @@ export const RUBROS_MAESTROS_MOCK: RubroMaestroMock[] = [
     id: "rm-0049",
     codigo: "R-049",
     categoria: "Revoques",
-    nombre: "Salpicado (1:3)",
+    nombre: "Revoque Salpicado (1:3)",
     unidad: "m²",
     insumos: [
       { id: "ins-00254", nombre: "Cemento tipo 1", unidad: "kg", rendimiento: 3, porcPerdida: 0, precioUnitario: 1230, esManodeObra: false },
@@ -703,7 +703,7 @@ export const RUBROS_MAESTROS_MOCK: RubroMaestroMock[] = [
     id: "rm-0050",
     codigo: "R-050",
     categoria: "Revoques",
-    nombre: "Azotada Impermeable (1:3) — 0.5 cm",
+    nombre: "Revoque Azotada Impermeable (1:3) — 0.5 cm",
     unidad: "m²",
     insumos: [
       { id: "ins-00258", nombre: "Cemento tipo 1", unidad: "kg", rendimiento: 2.7, porcPerdida: 0, precioUnitario: 1230, esManodeObra: false },
@@ -716,7 +716,7 @@ export const RUBROS_MAESTROS_MOCK: RubroMaestroMock[] = [
     id: "rm-0051",
     codigo: "R-051",
     categoria: "Revoques",
-    nombre: "De Cielorraso (1:4:12)",
+    nombre: "Revoque de Cielorraso (1:4:12)",
     unidad: "m²",
     insumos: [
       { id: "ins-00262", nombre: "Cemento tipo 1", unidad: "kg", rendimiento: 1.8, porcPerdida: 0, precioUnitario: 1230, esManodeObra: false },
@@ -730,7 +730,7 @@ export const RUBROS_MAESTROS_MOCK: RubroMaestroMock[] = [
     id: "rm-0052",
     codigo: "R-052",
     categoria: "Techos",
-    nombre: "TECHOS Teja Española sobre Tejuelón — Madera Ybyrapytá",
+    nombre: "Techo — Teja Española sobre Tejuelón — Madera Ybyrapytá",
     unidad: "ml",
     insumos: [
       { id: "ins-00267", nombre: "Teja española", unidad: "un", rendimiento: 28, porcPerdida: 0, precioUnitario: 1800, esManodeObra: false },
@@ -814,7 +814,7 @@ export const RUBROS_MAESTROS_MOCK: RubroMaestroMock[] = [
     id: "rm-0057",
     codigo: "R-057",
     categoria: "Pisos",
-    nombre: "Piedra Losa Rompecabeza",
+    nombre: "Piso — Piedra Losa Rompecabeza",
     unidad: "m²",
     insumos: [
       { id: "ins-00306", nombre: "Piedra losa blanca", unidad: "m²", rendimiento: 1.05, porcPerdida: 0, precioUnitario: 35000, esManodeObra: false },
@@ -828,7 +828,7 @@ export const RUBROS_MAESTROS_MOCK: RubroMaestroMock[] = [
     id: "rm-0058",
     codigo: "R-058",
     categoria: "Pisos",
-    nombre: "Piedra losa Blanca Cuadrada Pulida",
+    nombre: "Piso — Piedra Losa Blanca Cuadrada Pulida",
     unidad: "m²",
     insumos: [
       { id: "ins-00311", nombre: "Piedra losa blanca cuadrada pulida", unidad: "m²", rendimiento: 1, porcPerdida: 0, precioUnitario: 95000, esManodeObra: false },
@@ -842,7 +842,7 @@ export const RUBROS_MAESTROS_MOCK: RubroMaestroMock[] = [
     id: "rm-0059",
     codigo: "R-059",
     categoria: "Pisos",
-    nombre: "Alisada de Cemento",
+    nombre: "Piso Alisado de Cemento",
     unidad: "m²",
     insumos: [
       { id: "ins-00316", nombre: "Cemento tipo 1", unidad: "kg", rendimiento: 10, porcPerdida: 0, precioUnitario: 1230, esManodeObra: false },
@@ -855,7 +855,7 @@ export const RUBROS_MAESTROS_MOCK: RubroMaestroMock[] = [
     id: "rm-0060",
     codigo: "R-060",
     categoria: "Pisos",
-    nombre: "Baldosones de Hormigón (40x40x3cm)",
+    nombre: "Piso — Baldosones de Hormigón (40x40x3cm)",
     unidad: "m²",
     insumos: [
       { id: "ins-00320", nombre: "Baldosón de hormigón", unidad: "m²", rendimiento: 1.1, porcPerdida: 0, precioUnitario: 37000, esManodeObra: false },
@@ -882,7 +882,7 @@ export const RUBROS_MAESTROS_MOCK: RubroMaestroMock[] = [
     id: "rm-0062",
     codigo: "R-062",
     categoria: "Pisos",
-    nombre: "Alfombra (2mm sin cordón)",
+    nombre: "Piso — Alfombra (2mm sin cordón)",
     unidad: "m²",
     insumos: [
       { id: "ins-00329", nombre: "Alfombra multipiso", unidad: "m²", rendimiento: 1.1, porcPerdida: 0, precioUnitario: 25000, esManodeObra: false },
@@ -895,7 +895,7 @@ export const RUBROS_MAESTROS_MOCK: RubroMaestroMock[] = [
     id: "rm-0063",
     codigo: "R-063",
     categoria: "Pisos",
-    nombre: "Empedrado sin cordón",
+    nombre: "Piso — Empedrado sin cordón",
     unidad: "m²",
     insumos: [
       { id: "ins-00333", nombre: "Piedra bruta blanca", unidad: "m³", rendimiento: 0.2, porcPerdida: 0, precioUnitario: 150000, esManodeObra: false },
@@ -908,7 +908,7 @@ export const RUBROS_MAESTROS_MOCK: RubroMaestroMock[] = [
     id: "rm-0064",
     codigo: "R-064",
     categoria: "Pisos",
-    nombre: "Hormigón Armado 12 cm",
+    nombre: "Piso de Hormigón Armado 12 cm",
     unidad: "m²",
     insumos: [
       { id: "ins-00337", nombre: "Cemento tipo 1", unidad: "kg", rendimiento: 35, porcPerdida: 0, precioUnitario: 1230, esManodeObra: false },
@@ -922,7 +922,7 @@ export const RUBROS_MAESTROS_MOCK: RubroMaestroMock[] = [
     id: "rm-0065",
     codigo: "R-065",
     categoria: "Zócalos",
-    nombre: "ZOCALOS — Cemento Alisado",
+    nombre: "Zócalo Cemento Alisado",
     unidad: "ml",
     insumos: [
       { id: "ins-00342", nombre: "Cemento tipo 1", unidad: "kg", rendimiento: 1, porcPerdida: 0, precioUnitario: 1230, esManodeObra: false },
@@ -1012,7 +1012,7 @@ export const RUBROS_MAESTROS_MOCK: RubroMaestroMock[] = [
     id: "rm-0072",
     codigo: "R-072",
     categoria: "Cielorrasos",
-    nombre: "CIELORRASO — Machimbre con armazón de madera",
+    nombre: "Cielorraso — Machimbre con Armazón de Madera",
     unidad: "m²",
     insumos: [
       { id: "ins-00369", nombre: "Listón de cedro 1x2", unidad: "ml", rendimiento: 10, porcPerdida: 0, precioUnitario: 20000, esManodeObra: false },
@@ -1025,7 +1025,7 @@ export const RUBROS_MAESTROS_MOCK: RubroMaestroMock[] = [
     id: "rm-0073",
     codigo: "R-073",
     categoria: "Revestimientos",
-    nombre: "REVESTIDOS Azulejo 15x15cm",
+    nombre: "Revestido — Azulejo 15x15cm",
     unidad: "m²",
     insumos: [
       { id: "ins-00373", nombre: "Azulejo 15x15cm", unidad: "m²", rendimiento: 1.05, porcPerdida: 0, precioUnitario: 34000, esManodeObra: false },
@@ -1038,7 +1038,7 @@ export const RUBROS_MAESTROS_MOCK: RubroMaestroMock[] = [
     id: "rm-0074",
     codigo: "R-074",
     categoria: "Revestimientos",
-    nombre: "Azulejo 20x20cm",
+    nombre: "Revestido — Azulejo 20x20cm",
     unidad: "m²",
     insumos: [
       { id: "ins-00377", nombre: "Azulejo 20x20cm", unidad: "m²", rendimiento: 1.05, porcPerdida: 0, precioUnitario: 105000, esManodeObra: false },
@@ -1051,7 +1051,7 @@ export const RUBROS_MAESTROS_MOCK: RubroMaestroMock[] = [
     id: "rm-0075",
     codigo: "R-075",
     categoria: "Revestimientos",
-    nombre: "Azulejo 20x25cm",
+    nombre: "Revestido — Azulejo 20x25cm",
     unidad: "m²",
     insumos: [
       { id: "ins-00381", nombre: "Azulejo 20x25cm", unidad: "m²", rendimiento: 1.05, porcPerdida: 0, precioUnitario: 47000, esManodeObra: false },
@@ -1064,7 +1064,7 @@ export const RUBROS_MAESTROS_MOCK: RubroMaestroMock[] = [
     id: "rm-0076",
     codigo: "R-076",
     categoria: "Revestimientos",
-    nombre: "Ladrillejo",
+    nombre: "Revestido — Ladrillejo",
     unidad: "m²",
     insumos: [
       { id: "ins-00385", nombre: "Ladrillejo de 1ra", unidad: "un", rendimiento: 50, porcPerdida: 0, precioUnitario: 785, esManodeObra: false },
@@ -1091,7 +1091,7 @@ export const RUBROS_MAESTROS_MOCK: RubroMaestroMock[] = [
     id: "rm-0078",
     codigo: "R-078",
     categoria: "Desagüe Cloacal y Pluvial",
-    nombre: "DESAGUE Boca Desagüe Abierta 20x20x20cm",
+    nombre: "Desagüe — Boca Abierta 20x20x20cm",
     unidad: "un",
     insumos: [
       { id: "ins-00394", nombre: "Ladrillo común", unidad: "un", rendimiento: 50, porcPerdida: 0, precioUnitario: 800, esManodeObra: false },
@@ -1272,7 +1272,7 @@ export const RUBROS_MAESTROS_MOCK: RubroMaestroMock[] = [
     id: "rm-0092",
     codigo: "R-092",
     categoria: "Instalación Sanitaria",
-    nombre: "AGUA CORRIENTE — Caño PVC 1 pulgada",
+    nombre: "Agua Corriente — Caño PVC 1 pulgada",
     unidad: "ml",
     insumos: [
       { id: "ins-00449", nombre: "Caño PVC roscable 1\"", unidad: "ml", rendimiento: 1, porcPerdida: 0, precioUnitario: 9083, esManodeObra: false },
@@ -1462,7 +1462,7 @@ export const RUBROS_MAESTROS_MOCK: RubroMaestroMock[] = [
     id: "rm-0105",
     codigo: "R-105",
     categoria: "Instalación Eléctrica",
-    nombre: "ELECTRICA — Pilar de Mampostería",
+    nombre: "Eléctrica — Pilar de Mampostería",
     unidad: "un",
     insumos: [
       { id: "ins-00522", nombre: "Ladrillo común", unidad: "un", rendimiento: 170, porcPerdida: 0, precioUnitario: 800, esManodeObra: false },
@@ -1642,7 +1642,7 @@ export const RUBROS_MAESTROS_MOCK: RubroMaestroMock[] = [
     id: "rm-0117",
     codigo: "R-117",
     categoria: "Carpintería de Madera",
-    nombre: "CARPINTERIA MADERA — Marco 0.70m",
+    nombre: "Carpintería Madera — Marco 0.70m",
     unidad: "un",
     insumos: [
       { id: "ins-00594", nombre: "Marco de ybyrapytá", unidad: "ml", rendimiento: 5.1, porcPerdida: 0, precioUnitario: 55000, esManodeObra: false },
@@ -1830,7 +1830,7 @@ export const RUBROS_MAESTROS_MOCK: RubroMaestroMock[] = [
     id: "rm-0131",
     codigo: "R-131",
     categoria: "Carpintería Metálica",
-    nombre: "CARPINTERIA METALICA — Balancín hasta 1m²",
+    nombre: "Carpintería Metálica — Balancín hasta 1m²",
     unidad: "un",
     insumos: [
       { id: "ins-00656", nombre: "Balancín ángulo 5/8 y T 3/4 x 1/8", unidad: "m²", rendimiento: 1, porcPerdida: 0, precioUnitario: 180000, esManodeObra: false },
@@ -1869,7 +1869,7 @@ export const RUBROS_MAESTROS_MOCK: RubroMaestroMock[] = [
     id: "rm-0134",
     codigo: "R-134",
     categoria: "Pinturas",
-    nombre: "PINTURAS Pintura a la Cal",
+    nombre: "Pintura a la Cal",
     unidad: "m²",
     insumos: [
       { id: "ins-00668", nombre: "Cal triturada", unidad: "kg", rendimiento: 0.5, porcPerdida: 0, precioUnitario: 1225, esManodeObra: false },
@@ -2030,7 +2030,7 @@ export const RUBROS_MAESTROS_MOCK: RubroMaestroMock[] = [
     id: "rm-0146",
     codigo: "R-146",
     categoria: "Varios",
-    nombre: "VARIOS Moldura Doble",
+    nombre: "Moldura Doble",
     unidad: "ml",
     insumos: [
       { id: "ins-00721", nombre: "Moldura doble", unidad: "ml", rendimiento: 12, porcPerdida: 0, precioUnitario: 8000, esManodeObra: false },

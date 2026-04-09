@@ -178,7 +178,8 @@ model Proyecto {
   nombre          String
   descripcion     String?
   ubicacion       String?
-  superficieM2    Float?
+  superficieM2    Float?   // Superficie a construir (m²) — base para costo/m²
+  superficieTerreno Float? // Superficie del terreno (m²)
   fechaInicio     DateTime?
   fechaFinEstimada DateTime?
   duracionSemanas Int?           // Duración planificada en semanas
@@ -215,13 +216,42 @@ model Proyecto {
 
   // Módulo 7: Estado Financiero
   movimientosFinancieros MovimientoFinanciero[]
+  trabajosAdicionales    TrabajoAdicional[]
   // Módulo 8: Proveedores y Compras
   facturasProveedores    FacturaProveedor[]
+
+  // ── Datos contractuales (Módulo Financiero) ──────────────────────────────
+  montoContrato        Float?   // Monto base del contrato con el cliente
+  formaPago            String?  // Ej: "Anticipo 30% + cuotas mensuales"
+  objetoContrato       String?  // Descripción corta del objeto del contrato
+  fechaContrato        DateTime?
+  responsableObra      String?  // Nombre del Director/Responsable de Obra
+  contactoPropietario  String?  // Teléfono o email de referencia rápida
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@map("proyecto")
+}
+
+/// Trabajo adicional fuera del contrato original
+/// Suma al monto total a cobrar al cliente
+model TrabajoAdicional {
+  id          String    @id @default(cuid())
+  descripcion String
+  monto       Float
+  fechaInicio DateTime?
+  fechaFin    DateTime?
+  aprobado    Boolean   @default(false)
+  observacion String?
+
+  proyectoId String
+  proyecto   Proyecto @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("trabajo_adicional")
 }
 
 /// Hasta 5 propietarios por proyecto
@@ -690,9 +720,16 @@ model SesionHistorial {
 // MÓDULO 7 — ESTADO FINANCIERO (LIBRO MAYOR)
 // ============================================================
 
+/// Tipo granular de movimiento financiero
+/// El prefijo INGRESO_ / EGRESO_ indica dirección del flujo
 enum TipoMovimiento {
-  INGRESO
-  EGRESO
+  INGRESO_CLIENTE       // Cobro al propietario/cliente
+  EGRESO_PROVEEDOR      // Pago a proveedor de materiales
+  EGRESO_PERSONAL       // Pago a mano de obra / cuadrillas
+  EGRESO_MAQUINARIA     // Alquiler de maquinaria / combustible
+  EGRESO_HONORARIO      // Honorarios profesionales (arquitecto, ing, etc.)
+  EGRESO_CAJA_CHICA     // Gastos menores sin factura formal
+  EGRESO_OTRO           // Cualquier otro egreso
 }
 
 enum MetodoPago {
@@ -703,39 +740,43 @@ enum MetodoPago {
   OTRO
 }
 
-/// Categoría contable del movimiento
-enum CategoriaMovimiento {
-  ANTICIPO_PROPIETARIO
-  CUOTA_PROPIETARIO
-  PAGO_MANO_OBRA
-  PAGO_PROVEEDOR
-  HONORARIO_PROFESIONAL
-  GASTO_ADMINISTRATIVO
-  DEVOLUCION
+enum TipoComprobante {
+  FACTURA
+  RECIBO
+  REMISION
+  TICKET
   OTRO
 }
 
 /// Movimiento financiero del Libro Mayor (Ingreso o Egreso por proyecto)
 /// El saldo se calcula en runtime — no se persiste para evitar inconsistencias
 model MovimientoFinanciero {
-  id                 String              @id @default(cuid())
+  id                 String         @id @default(cuid())
   fecha              DateTime
   tipo               TipoMovimiento
-  categoria          CategoriaMovimiento @default(OTRO)
-  concepto           String              // Por qué se realizó el movimiento
-  beneficiario       String              // A quién se pagó / de quién se recibió
+  concepto           String         // Descripción del movimiento
+  beneficiario       String         // A quién se pagó / de quién se recibió
   monto              Float
 
-  nroComprobante     String?             // N° de recibo o factura de referencia
-  autorizadoPor      String?             // Nombre del responsable que autorizó
+  // Comprobante
+  tipoComprobante    TipoComprobante?
+  nroComprobante     String?         // N° de factura, recibo, remisión, etc.
+
+  // Auditoría
+  autorizadoPor      String?         // Nombre de quien autorizó el pago
+  realizadoPor       String?         // Nombre de quien ejecutó físicamente el pago
+
+  // Vinculación con Mano de Obra (sincronización bidireccional)
+  codigoPersonal     String?         // Código del trabajador en el módulo Mano de Obra
 
   metodoPago         MetodoPago
-  otroMetodoDetalle  String?             // Descripción libre si metodoPago = OTRO
+  otroMetodoDetalle  String?         // Descripción libre si metodoPago = OTRO
 
   // Campos para CHEQUE
   nroCheque          String?
   bancoCheque        String?
   fechaEmisionCheque DateTime?
+  fechaCobroCheque   DateTime?       // Fecha real de cobro/depósito del cheque
 
   // Campos para TRANSFERENCIA / GIRO
   nroTransaccion     String?

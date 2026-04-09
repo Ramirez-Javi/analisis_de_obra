@@ -12,7 +12,6 @@ import {
   Trash2,
   AlertTriangle,
   CheckCircle2,
-  ChevronRight,
 } from "lucide-react";
 import {
   LineChart,
@@ -24,6 +23,8 @@ import {
   Legend,
   ResponsiveContainer,
 } from "recharts";
+import { AsignarProyectoWidget } from "@/components/shared/AsignarProyectoWidget";
+import type { ProyectoSimple } from "@/app/actions/proyectos";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -857,11 +858,14 @@ function ContratistaCard({
   contratista,
   totalPagado,
   onClick,
+  onDelete,
 }: {
   contratista: Contratista;
   totalPagado: number;
   onClick: () => void;
+  onDelete: () => void;
 }) {
+  const [confirming, setConfirming] = useState(false);
   const pct = contratista.montoPactado > 0
     ? Math.min((totalPagado / contratista.montoPactado) * 100, 100)
     : 0;
@@ -881,7 +885,35 @@ function ContratistaCard({
             <p className="text-xs dark:text-slate-400 text-slate-500">{contratista.rubro}</p>
           </div>
         </div>
-        <ChevronRight className="w-4 h-4 dark:text-slate-600 text-slate-300 group-hover:dark:text-slate-400 group-hover:text-slate-500 transition-colors mt-1 shrink-0" />
+        {/* Delete / Confirm area */}
+        {confirming ? (
+          <div
+            className="flex items-center gap-1 shrink-0"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <span className="text-[11px] font-semibold dark:text-red-400 text-red-600 mr-1">¿Eliminar?</span>
+            <button
+              onClick={(e) => { e.stopPropagation(); onDelete(); }}
+              className="px-2 py-1 rounded-lg text-[11px] font-bold dark:bg-red-500/15 bg-red-50 dark:text-red-400 text-red-600 dark:hover:bg-red-500/25 hover:bg-red-100 border dark:border-red-500/20 border-red-200 transition-colors"
+            >
+              Sí, borrar
+            </button>
+            <button
+              onClick={(e) => { e.stopPropagation(); setConfirming(false); }}
+              className="px-2 py-1 rounded-lg text-[11px] font-bold dark:bg-slate-700 bg-slate-100 dark:text-slate-300 text-slate-600 hover:dark:bg-slate-600 hover:bg-slate-200 transition-colors"
+            >
+              No
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={(e) => { e.stopPropagation(); setConfirming(true); }}
+            className="p-1.5 rounded-lg dark:text-red-400/40 text-red-300 dark:hover:bg-red-500/10 hover:bg-red-50 dark:hover:text-red-400 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100 shrink-0"
+            title="Eliminar contratista"
+          >
+            <Trash2 className="w-4 h-4" />
+          </button>
+        )}
       </div>
 
       <div className="mt-4">
@@ -910,12 +942,14 @@ interface ManoObraClientProps {
   backHref: string;
   proyecto?: { id: string; codigo: string; nombre: string };
   stickyTop?: string;
+  proyectosDisponibles?: ProyectoSimple[];
 }
 
 export function ManoObraClient({
   backHref,
   proyecto,
   stickyTop = "top-0",
+  proyectosDisponibles = [],
 }: ManoObraClientProps) {
   const [contratistas, setContratistas] = useState<Contratista[]>(CONTRATISTAS_INICIALES);
   const [pagosMap, setPagosMap] = useState<Record<string, PagoRegistro[]>>({
@@ -955,6 +989,13 @@ export function ManoObraClient({
       ...prev,
       [contraId]: [...(prev[contraId] ?? []), registro],
     }));
+  };
+
+  const deleteContratista = (id: string) => {
+    setContratistas((prev) => prev.filter((c) => c.id !== id));
+    setPagosMap((prev) => { const next = { ...prev }; delete next[id]; return next; });
+    setBitacoraMap((prev) => { const next = { ...prev }; delete next[id]; return next; });
+    if (selectedId === id) setSelectedId(null);
   };
 
   // ── Vista detalle de contratista ────────────────────────────────────────────
@@ -1054,6 +1095,13 @@ export function ManoObraClient({
               {proyecto ? `${proyecto.codigo} · ` : ""}Subcontratos y cuadrillas
             </p>
           </div>
+          {!proyecto && proyectosDisponibles.length > 0 && (
+            <AsignarProyectoWidget
+              proyectos={proyectosDisponibles}
+              mode="nav"
+              moduloPath="mano-obra"
+            />
+          )}
           <button
             onClick={() => {
               const newId = uid("c");
@@ -1146,6 +1194,7 @@ export function ManoObraClient({
                   setSelectedId(c.id);
                   setActiveTab("ficha");
                 }}
+                onDelete={() => deleteContratista(c.id)}
               />
             );
           })}

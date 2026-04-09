@@ -34,6 +34,8 @@ export interface NuevoProyectoFormValues {
   estado: string;         // EstadoProyecto enum value
   fechaInicio: string;    // YYYY-MM-DD
   duracionSemanas: string; // Cantidad de semanas (convertido a Int al guardar)
+  superficieM2: string;       // Superficie a construir en m² (convertido a Float al guardar)
+  superficieTerreno: string;  // Superficie del terreno en m² (convertido a Float al guardar)
   propietarios: PropietarioInput[];
   equipoElaboracion: string;
   equipoElaboracionCargo: string;
@@ -63,6 +65,8 @@ export const defaultFormValues: NuevoProyectoFormValues = {
   estado: "ANTEPROYECTO",
   fechaInicio: "",
   duracionSemanas: "",
+  superficieM2: "",
+  superficieTerreno: "",
   propietarios: [{ nombre: "", direccion: "", telefono: "", email: "" }],
   equipoElaboracion: "",
   equipoElaboracionCargo: "",

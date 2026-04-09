@@ -3,7 +3,7 @@
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/session";
 import { revalidatePath } from "next/cache";
-import type { MetodoPago, TipoMovimiento, CategoriaMovimiento } from "@prisma/client";
+import type { MetodoPago, TipoMovimiento } from "@prisma/client";
 
 async function requireAuth() {
   const session = await getSession();
@@ -29,7 +29,6 @@ export async function getMovimientos(proyectoId: string) {
 export interface NuevoMovimientoData {
   fecha: string;
   tipo: TipoMovimiento;
-  categoria: CategoriaMovimiento;
   concepto: string;
   beneficiario: string;
   monto: number;
@@ -59,7 +58,6 @@ export async function crearMovimiento(proyectoId: string, data: NuevoMovimientoD
         proyectoId,
         fecha: new Date(data.fecha),
         tipo: data.tipo,
-        categoria: data.categoria,
         concepto: data.concepto,
         beneficiario: data.beneficiario,
         monto: data.monto,

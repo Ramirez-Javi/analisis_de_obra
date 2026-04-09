@@ -12,23 +12,30 @@ import {
 } from "./types";
 import { RubroRow } from "./RubroRow";
 import { PresupuestoToolbar } from "./PresupuestoToolbar";
+import { AsignarProyectoWidget } from "@/components/shared/AsignarProyectoWidget";
+import type { ProyectoSimple } from "@/app/actions/proyectos";
 
 // ── Tarjeta totalizadora ──────────────────────────────────────
 interface TotCardProps {
   label: string;
-  value: number;
+  value?: number;
   accent: string;
   sub?: string;
+  placeholder?: string;
 }
-function TotCard({ label, value, accent, sub }: TotCardProps) {
+function TotCard({ label, value, accent, sub, placeholder }: TotCardProps) {
   return (
     <div className="flex-1 min-w-[130px] rounded-xl px-4 py-3 dark:bg-slate-900/60 bg-white border dark:border-white/[0.06] border-slate-200 shadow-sm dark:shadow-none">
       <p className="text-[10px] uppercase tracking-wider dark:text-slate-500 text-slate-400 font-semibold mb-0.5">
         {label}
       </p>
-      <p className={`text-lg font-bold tabular-nums leading-tight ${accent}`}>
-        Gs. {fmtGs(value)}
-      </p>
+      {placeholder !== undefined ? (
+        <p className="text-lg font-bold dark:text-slate-600 text-slate-300">{placeholder}</p>
+      ) : (
+        <p className={`text-lg font-bold tabular-nums leading-tight ${accent}`}>
+          Gs. {fmtGs(value ?? 0)}
+        </p>
+      )}
       {sub && (
         <p className="text-[10px] dark:text-slate-600 text-slate-400 mt-0.5">{sub}</p>
       )}
@@ -53,12 +60,14 @@ interface PresupuestoClientProps {
     id: string;
     codigo: string;
     nombre: string;
+    superficieM2?: number | null;
   };
-  /**
-   * Offset sticky top. Usar "top-[52px]" cuando hay barra de proyecto
+  /** Offset sticky top. Usar "top-[52px]" cuando hay barra de proyecto
    * encima (layout.tsx), "top-0" en modo standalone.
    */
   stickyTop?: string;
+  /** Proyectos disponibles para asignar (solo relevante en modo standalone) */
+  proyectosDisponibles?: ProyectoSimple[];
 }
 
 export function PresupuestoClient({
@@ -66,6 +75,7 @@ export function PresupuestoClient({
   backLabel,
   proyecto,
   stickyTop = "top-0",
+  proyectosDisponibles = [],
 }: PresupuestoClientProps) {
   const STORAGE_KEY = `presupuesto_${proyecto?.id ?? "standalone"}`;
 
@@ -109,6 +119,9 @@ export function PresupuestoClient({
     0
   );
   const totalCD = totalMat + totalMO;
+  const costoPorM2 = proyecto?.superficieM2 && proyecto.superficieM2 > 0
+    ? totalCD / proyecto.superficieM2
+    : null;
   // ── Tabs ────────────────────────────────────────────────
   const [activeTab, setActiveTab] = useState<"rubros" | "consolidado">("rubros");
 
@@ -322,32 +335,44 @@ export function PresupuestoClient({
                     Cómputo y Presupuesto
                   </p>
                   <p className="text-[11px] dark:text-slate-500 text-slate-400">
-                    {proyecto ? `${proyecto.nombre} · Módulo 2` : "Modo independiente"}
+                    {proyecto
+                      ? <>{proyecto.nombre}{" · Módulo 2"}{proyecto.superficieM2 ? <span className="ml-1.5 px-1.5 py-0.5 rounded-full text-[9px] font-semibold dark:bg-purple-500/15 bg-purple-50 dark:text-purple-400 text-purple-700 border dark:border-purple-500/20 border-purple-200">{proyecto.superficieM2} m²</span> : null}</>
+                      : "Modo independiente"}
                   </p>
                 </div>
               </div>
             </div>
 
-            {/* ── Botón Guardar ── */}
-            <button
-              onClick={handleSave}
-              disabled={saveState === "saving" || (saveState !== "saved" && !isDirty)}
-              className={`shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                saveState === "saved"
-                  ? "dark:bg-teal-500/20 bg-teal-50 dark:text-teal-400 text-teal-600 border dark:border-teal-500/20 border-teal-200"
-                  : isDirty
-                  ? "dark:bg-amber-500/15 bg-amber-50 dark:text-amber-400 text-amber-600 border dark:border-amber-500/20 border-amber-200 dark:hover:bg-amber-500/25 hover:bg-amber-100"
-                  : "dark:bg-slate-800 bg-slate-100 dark:text-slate-500 text-slate-400 border dark:border-white/[0.06] border-slate-200 cursor-default"
-              }`}
-            >
-              {saveState === "saved" ? (
-                <><Check size={12} aria-hidden />Guardado</>
-              ) : isDirty ? (
-                <><Save size={12} aria-hidden />Guardar cambios</>
-              ) : (
-                <><Save size={12} aria-hidden />Sin cambios</>
+            {/* ── Botón Guardar + Asignar (solo standalone) ── */}
+            <div className="flex items-center gap-2 shrink-0">
+              {!proyecto && proyectosDisponibles.length > 0 && (
+                <AsignarProyectoWidget
+                  proyectos={proyectosDisponibles}
+                  mode="copy"
+                  storagePrefix="presupuesto"
+                  moduloPath="presupuesto"
+                />
               )}
-            </button>
+              <button
+                onClick={handleSave}
+                disabled={saveState === "saving" || (saveState !== "saved" && !isDirty)}
+                className={`shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                  saveState === "saved"
+                    ? "dark:bg-teal-500/20 bg-teal-50 dark:text-teal-400 text-teal-600 border dark:border-teal-500/20 border-teal-200"
+                    : isDirty
+                    ? "dark:bg-amber-500/15 bg-amber-50 dark:text-amber-400 text-amber-600 border dark:border-amber-500/20 border-amber-200 dark:hover:bg-amber-500/25 hover:bg-amber-100"
+                    : "dark:bg-slate-800 bg-slate-100 dark:text-slate-500 text-slate-400 border dark:border-white/[0.06] border-slate-200 cursor-default"
+                }`}
+              >
+                {saveState === "saved" ? (
+                  <><Check size={12} aria-hidden />Guardado</>
+                ) : isDirty ? (
+                  <><Save size={12} aria-hidden />Guardar cambios</>
+                ) : (
+                  <><Save size={12} aria-hidden />Sin cambios</>
+                )}
+              </button>
+            </div>
           </div>
 
           {/* Totalizadores */}
@@ -360,6 +385,19 @@ export function PresupuestoClient({
               accent="dark:text-teal-400 text-teal-700"
               sub={`${rubros.length} rubro${rubros.length !== 1 ? "s" : ""} cargado${rubros.length !== 1 ? "s" : ""}`}
             />
+            {proyecto && (
+              <TotCard
+                label="Costo por m²"
+                value={costoPorM2 ?? undefined}
+                accent="dark:text-purple-400 text-purple-700"
+                placeholder={costoPorM2 === null ? "—" : undefined}
+                sub={
+                  costoPorM2 !== null
+                    ? `${proyecto.superficieM2} m² a construir`
+                    : "Definir superficie en Editar Proyecto"
+                }
+              />
+            )}
           </div>
         </div>
 
