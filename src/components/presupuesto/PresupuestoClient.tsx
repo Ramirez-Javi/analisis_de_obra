@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useRef, useEffect } from "react";
 import Link from "next/link";
-import { ArrowLeft, Calculator, PackageOpen, Save, Check, List, HardHat, Package } from "lucide-react";
+import { ArrowLeft, Calculator, PackageOpen, Save, Check, List, HardHat, Package, X, Delete } from "lucide-react";
 import type { RubroProyecto, InsumoRubro, RubroMaestroMock } from "./types";
 import {
   RUBROS_MAESTROS_MOCK,
@@ -48,7 +48,197 @@ let _seq = 0;
 function uid(prefix: string) {
   return `${prefix}-${Date.now()}-${++_seq}`;
 }
+// ── Calculadora flotante arrastrable ────────────────────────────────
+const CALC_BUTTONS = [
+  ["C", "±", "%", "÷"],
+  ["7", "8", "9", "×"],
+  ["4", "5", "6", "−"],
+  ["1", "2", "3", "+"],
+  ["0", ".", "⌫", "="],
+] as const;
 
+type CalcKey = (typeof CALC_BUTTONS)[number][number];
+
+function DraggableCalculator({ onClose }: { onClose: () => void }) {
+  const [display, setDisplay] = useState("0");
+  const [expr, setExpr] = useState("");
+  const [waiting, setWaiting] = useState(false); // espera nuevo operando
+
+  const panelRef = useRef<HTMLDivElement>(null);
+  const dragState = useRef<{ startX: number; startY: number; origX: number; origY: number } | null>(null);
+  const posRef = useRef({ x: 0, y: 0 });
+
+  // Posición inicial: centro derecho visible
+  useEffect(() => {
+    if (!panelRef.current) return;
+    const iw = window.innerWidth;
+    const ih = window.innerHeight;
+    const pw = panelRef.current.offsetWidth || 280;
+    const ph = panelRef.current.offsetHeight || 420;
+    posRef.current = { x: Math.max(0, iw - pw - 24), y: Math.max(0, (ih - ph) / 2) };
+    panelRef.current.style.left = `${posRef.current.x}px`;
+    panelRef.current.style.top  = `${posRef.current.y}px`;
+  }, []);
+
+  const onMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (!panelRef.current) return;
+    dragState.current = {
+      startX: e.clientX,
+      startY: e.clientY,
+      origX: posRef.current.x,
+      origY: posRef.current.y,
+    };
+    const onMove = (ev: MouseEvent) => {
+      if (!dragState.current || !panelRef.current) return;
+      const nx = dragState.current.origX + ev.clientX - dragState.current.startX;
+      const ny = dragState.current.origY + ev.clientY - dragState.current.startY;
+      posRef.current = { x: nx, y: ny };
+      panelRef.current.style.left = `${nx}px`;
+      panelRef.current.style.top  = `${ny}px`;
+    };
+    const onUp = () => {
+      dragState.current = null;
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+    };
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+  };
+
+  const press = useCallback((key: CalcKey) => {
+    if (key === "C") {
+      setDisplay("0"); setExpr(""); setWaiting(false);
+      return;
+    }
+    if (key === "⌫") {
+      setDisplay((d) => d.length > 1 ? d.slice(0, -1) : "0");
+      return;
+    }
+    if (key === "±") {
+      setDisplay((d) => d.startsWith("-") ? d.slice(1) : "-" + d);
+      return;
+    }
+    if (key === "%") {
+      setDisplay((d) => String(parseFloat(d) / 100));
+      return;
+    }
+    if (key === "=") {
+      const full = expr + display;
+      try {
+        const normalized = full.replace(/÷/g, "/").replace(/×/g, "*").replace(/−/g, "-");
+        // eslint-disable-next-line no-new-func
+        const result = Function(`"use strict"; return (${normalized})`)() as number;
+        const str = Number.isFinite(result) ? String(parseFloat(result.toFixed(10))) : "Error";
+        setDisplay(str); setExpr(""); setWaiting(true);
+      } catch {
+        setDisplay("Error"); setExpr(""); setWaiting(true);
+      }
+      return;
+    }
+    if (key === "÷" || key === "×" || key === "−" || key === "+") {
+      setExpr(display + " " + key + " ");
+      setWaiting(true);
+      return;
+    }
+    // Dígito o punto
+    if (key === ".") {
+      if (waiting) { setDisplay("0."); setWaiting(false); return; }
+      if (!display.includes(".")) setDisplay((d) => d + ".");
+      return;
+    }
+    // Número
+    if (waiting) {
+      setDisplay(key); setWaiting(false);
+    } else {
+      setDisplay((d) => d === "0" ? key : d + key);
+    }
+  }, [display, expr, waiting]);
+
+  // Soporte de teclado físico
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      // No interceptar cuando el foco está en un input del presupuesto
+      if (
+        e.target instanceof HTMLInputElement ||
+        e.target instanceof HTMLTextAreaElement ||
+        e.target instanceof HTMLSelectElement
+      ) return;
+      const k = e.key;
+      if (k >= "0" && k <= "9") { e.preventDefault(); press(k as CalcKey); return; }
+      if (k === ".")        { e.preventDefault(); press("."); return; }
+      if (k === "+")        { e.preventDefault(); press("+"); return; }
+      if (k === "-")        { e.preventDefault(); press("−"); return; }
+      if (k === "*")        { e.preventDefault(); press("×"); return; }
+      if (k === "/")        { e.preventDefault(); press("÷"); return; }
+      if (k === "Enter" || k === "=") { e.preventDefault(); press("="); return; }
+      if (k === "Backspace"){ e.preventDefault(); press("⌫"); return; }
+      if (k === "Delete")   { e.preventDefault(); press("C"); return; }
+      if (k === "Escape")   { e.preventDefault(); onClose(); return; }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [press, onClose]);
+
+  const btnClass = (k: CalcKey) => {
+    const isOp = ["÷", "×", "−", "+"].includes(k);
+    const isEq = k === "=";
+    const isClear = k === "C";
+    if (isEq) return "col-span-1 rounded-xl text-sm font-bold bg-teal-500 hover:bg-teal-400 text-white transition-colors";
+    if (isClear) return "col-span-1 rounded-xl text-sm font-bold dark:bg-red-500/15 bg-red-50 dark:text-red-400 text-red-600 dark:hover:bg-red-500/25 hover:bg-red-100 transition-colors";
+    if (isOp) return "col-span-1 rounded-xl text-sm font-bold dark:bg-teal-500/10 bg-teal-50 dark:text-teal-400 text-teal-600 dark:hover:bg-teal-500/20 hover:bg-teal-100 transition-colors";
+    return "col-span-1 rounded-xl text-sm font-medium dark:bg-slate-700 bg-slate-100 dark:text-slate-200 text-slate-800 dark:hover:bg-slate-600 hover:bg-slate-200 transition-colors";
+  };
+
+  return (
+    <div
+      ref={panelRef}
+      style={{ position: "fixed", zIndex: 9999, width: 272 }}
+      className="rounded-2xl shadow-2xl border dark:border-white/[0.10] border-slate-200 dark:bg-slate-900 bg-white overflow-hidden"
+    >
+      {/* Barra de arrastre */}
+      <div
+        onMouseDown={onMouseDown}
+        className="flex items-center justify-between px-3 py-2 dark:bg-slate-800 bg-slate-100 cursor-grab active:cursor-grabbing select-none"
+      >
+        <div className="flex items-center gap-2">
+          <Calculator className="w-3.5 h-3.5 dark:text-teal-400 text-teal-600" />
+          <span className="text-xs font-semibold dark:text-slate-300 text-slate-700">Calculadora</span>
+        </div>
+        <button
+          onMouseDown={(e) => e.stopPropagation()}
+          onClick={onClose}
+          className="p-0.5 rounded-md dark:hover:bg-slate-700 hover:bg-slate-200 dark:text-slate-400 text-slate-500 transition-colors"
+        >
+          <X className="w-3.5 h-3.5" />
+        </button>
+      </div>
+
+      {/* Display */}
+      <div className="px-4 pt-3 pb-2">
+        <p className="text-[11px] font-mono dark:text-slate-500 text-slate-400 min-h-[14px] text-right truncate">
+          {expr || " "}
+        </p>
+        <p className="text-2xl font-bold font-mono dark:text-slate-100 text-slate-900 text-right truncate leading-snug">
+          {display}
+        </p>
+      </div>
+
+      {/* Botones */}
+      <div className="px-3 pb-3 grid grid-cols-4 gap-2">
+        {CALC_BUTTONS.flat().map((k, i) => (
+          <button
+            key={i}
+            onClick={() => press(k as CalcKey)}
+            className={`h-12 ${btnClass(k as CalcKey)}`}
+          >
+            {k === "⌫" ? <Delete className="w-4 h-4 mx-auto" /> : k}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
 // ── Props del componente ──────────────────────────────────────
 interface PresupuestoClientProps {
   /** Href del botón "volver" en el breadcrumb */
@@ -100,6 +290,7 @@ export function PresupuestoClient({
   });
 
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved">("idle");
+  const [calcOpen, setCalcOpen] = useState(false);
 
   // ── Totalizadores ──────────────────────────────────────────
   const totalMat = rubros.reduce(
@@ -343,8 +534,20 @@ export function PresupuestoClient({
               </div>
             </div>
 
-            {/* ── Botón Guardar + Asignar (solo standalone) ── */}
+            {/* ── Botón Guardar + Calculadora + Asignar (solo standalone) ── */}
             <div className="flex items-center gap-2 shrink-0">
+              <button
+                onClick={() => setCalcOpen((o) => !o)}
+                title="Calculadora"
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${
+                  calcOpen
+                    ? "dark:bg-teal-500/20 bg-teal-50 dark:text-teal-400 text-teal-600 dark:border-teal-500/30 border-teal-200"
+                    : "dark:bg-slate-800 bg-slate-100 dark:text-slate-400 text-slate-500 dark:border-white/[0.06] border-slate-200 dark:hover:bg-slate-700 hover:bg-slate-200"
+                }`}
+              >
+                <Calculator size={13} />
+                <span className="hidden sm:inline">Calculadora</span>
+              </button>
               {!proyecto && proyectosDisponibles.length > 0 && (
                 <AsignarProyectoWidget
                   proyectos={proyectosDisponibles}
@@ -619,6 +822,9 @@ export function PresupuestoClient({
           </div>
         )}
       </main>
+
+      {/* ── Calculadora flotante ─────────────────────────────── */}
+      {calcOpen && <DraggableCalculator onClose={() => setCalcOpen(false)} />}
     </div>
   );
 }
