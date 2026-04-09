@@ -23,8 +23,18 @@ async function main() {
   }
 
   const hash = await bcrypt.hash(password, 12);
+
+  // Buscar la primera empresa disponible para asignar al admin
+  const empresa = await prisma.empresa.findFirst();
+
   await prisma.usuario.create({
-    data: { email, nombre, password: hash, rol: "ADMIN" },
+    data: {
+      email,
+      nombre,
+      password: hash,
+      rol: "ADMIN",
+      ...(empresa ? { empresaId: empresa.id } : {}),
+    },
   });
 
   console.log(`✓ Usuario administrador creado:`);

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowLeft, Plus, FolderOpen, MapPin, User, ArrowRight, Calculator } from "lucide-react";
+import { ArrowLeft, Plus, FolderOpen, MapPin, User, ArrowRight, Calculator, Info } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { DeleteProyectoButton } from "@/components/proyecto/DeleteProyectoButton";
 
@@ -17,8 +17,19 @@ async function getProyectos() {
   });
 }
 
-export default async function ProyectosLobbyPage() {
+const MODULO_LABELS: Record<string, string> = {
+  financiero: "Estado Financiero",
+  compras:    "Proveedores y Compras",
+};
+
+export default async function ProyectosLobbyPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ modulo?: string }>;
+}) {
+  const { modulo } = await searchParams;
   const proyectos = await getProyectos();
+  const moduloLabel = modulo ? MODULO_LABELS[modulo] : null;
 
   return (
     <div className="flex flex-col flex-1 min-h-screen dark:bg-slate-950 bg-slate-50 transition-colors duration-200">
@@ -66,6 +77,17 @@ export default async function ProyectosLobbyPage() {
             Nuevo Proyecto
           </Link>
         </div>
+
+        {/* Banner informativo cuando viene desde tarjeta proyecto-específica */}
+        {moduloLabel && (
+          <div className="mb-6 flex items-start gap-3 rounded-xl border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20 px-4 py-3">
+            <Info size={16} className="text-blue-500 shrink-0 mt-0.5" />
+            <p className="text-sm text-blue-800 dark:text-blue-300">
+              El módulo <span className="font-semibold">{moduloLabel}</span> es específico de cada proyecto.
+              Seleccioná un proyecto para acceder a él.
+            </p>
+          </div>
+        )}
 
         {/* Estado vacío */}
         {proyectos.length === 0 ? (

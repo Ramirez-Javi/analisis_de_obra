@@ -21,7 +21,17 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         try {
           const usuario = await prisma.usuario.findUnique({
             where: { email: credentials.email as string },
-            select: { id: true, email: true, nombre: true, password: true, rol: true, activo: true },
+            select: {
+              id: true,
+              email: true,
+              nombre: true,
+              apellido: true,
+              password: true,
+              rol: true,
+              activo: true,
+              empresaId: true,
+              permisos: { select: { modulo: true } },
+            },
           });
 
           if (!usuario || !usuario.activo) return null;
@@ -32,11 +42,18 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           );
           if (!passwordMatch) return null;
 
+          // Registrar inicio de sesión en historial
+          await prisma.sesionHistorial.create({
+            data: { usuarioId: usuario.id },
+          });
+
           return {
             id: usuario.id,
             email: usuario.email,
-            name: usuario.nombre,
+            name: [usuario.nombre, usuario.apellido].filter(Boolean).join(" "),
             role: usuario.rol,
+            empresaId: usuario.empresaId,
+            permisos: usuario.permisos.map((p) => p.modulo),
           };
         } catch (err) {
           console.error("[auth] authorize error:", err);
@@ -50,6 +67,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       if (user) {
         token.role = (user as { role?: string }).role;
         token.id = user.id;
+        token.empresaId = (user as { empresaId?: string }).empresaId;
+        token.permisos = (user as { permisos?: string[] }).permisos ?? [];
       }
       return token;
     },
@@ -57,6 +76,9 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       if (session.user) {
         session.user.id = token.id as string;
         (session.user as { role?: string }).role = token.role as string;
+        (session.user as { empresaId?: string }).empresaId = token.empresaId as string | undefined;
+        (session.user as { permisos?: string[] }).permisos =
+          (token.permisos as string[]) ?? [];
       }
       return session;
     },

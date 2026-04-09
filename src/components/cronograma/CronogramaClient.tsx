@@ -22,9 +22,11 @@ interface RubroCronograma {
   id: string;
   nombre: string;
   total: number;
-  fechaInicio: string; // YYYY-MM-DD
-  duracion: number;    // días
-  avanceReal: number;  // 0–100
+  fechaInicio: string;      // YYYY-MM-DD planificado
+  duracion: number;         // días planificados
+  avanceReal: number;       // 0–100
+  fechaInicioReal?: string; // YYYY-MM-DD real
+  fechaFinReal?: string;    // YYYY-MM-DD real
 }
 
 interface Proyecto {
@@ -122,6 +124,195 @@ const BAR_COLORS = [
   },
 ];
 
+// ─── Gantt calendar constants ────────────────────────────────────────────────
+
+const DAY_W = 28; // pixels per day column
+
+const MONTH_NAMES = [
+  "ENE", "FEB", "MAR", "ABR", "MAY", "JUN",
+  "JUL", "AGO", "SEP", "OCT", "NOV", "DIC",
+];
+// 0 = Sunday
+const DAY_INITIALS = ["D", "L", "M", "M", "J", "V", "S"];
+
+// ─── GanttGrid ────────────────────────────────────────────────────────────────
+
+interface GanttGridProps {
+  rubros: RubroCronograma[];
+  projectStart: string;
+  totalDays: number;
+  barColors: typeof BAR_COLORS;
+}
+
+function GanttGrid({ rubros, projectStart, totalDays, barColors }: GanttGridProps) {
+  const allDays = useMemo(() => {
+    return Array.from({ length: totalDays }, (_, i) => {
+      const d = new Date(projectStart + "T00:00:00");
+      d.setDate(d.getDate() + i);
+      return { offset: i, date: d };
+    });
+  }, [projectStart, totalDays]);
+
+  const monthGroups = useMemo(() => {
+    const groups: { label: string; count: number }[] = [];
+    for (const day of allDays) {
+      const label = MONTH_NAMES[day.date.getMonth()];
+      if (groups.length === 0 || groups[groups.length - 1].label !== label) {
+        groups.push({ label, count: 1 });
+      } else {
+        groups[groups.length - 1].count++;
+      }
+    }
+    return groups;
+  }, [allDays]);
+
+  const weekGroups = useMemo(() => {
+    const groups: { label: string; count: number }[] = [];
+    let weekNum = 1;
+    for (let i = 0; i < totalDays; i += 7) {
+      groups.push({ label: `SEM ${weekNum}`, count: Math.min(7, totalDays - i) });
+      weekNum++;
+    }
+    return groups;
+  }, [totalDays]);
+
+  const totalWidth = totalDays * DAY_W;
+
+  return (
+    <div className="flex gap-3" style={{ minWidth: `${128 + 12 + totalWidth}px` }}>
+      {/* Left column: rubro names */}
+      <div className="w-32 shrink-0">
+        {/* Spacer: 3 header rows × 28px = 84px total */}
+        <div className="h-[84px]" />
+        {rubros.map((r, i) => (
+          <div key={r.id} className="h-10 mb-2 flex items-center">
+            <span className={`text-xs font-semibold truncate ${barColors[i % barColors.length].label}`}>
+              {r.nombre}
+            </span>
+          </div>
+        ))}
+      </div>
+
+      {/* Right: calendar header + bars */}
+      <div className="flex-1 min-w-0" style={{ width: `${totalWidth}px` }}>
+        {/* Row 1: months */}
+        <div className="flex border-b dark:border-white/[0.06] border-slate-200">
+          {monthGroups.map((mg, idx) => (
+            <div
+              key={idx}
+              className="shrink-0 h-7 flex items-center justify-center text-[10px] font-bold tracking-widest dark:text-slate-200 text-slate-700 dark:bg-slate-800/70 bg-slate-100 border-r dark:border-white/[0.10] border-slate-300 overflow-hidden"
+              style={{ width: `${mg.count * DAY_W}px` }}
+            >
+              {mg.label}
+            </div>
+          ))}
+        </div>
+
+        {/* Row 2: weeks */}
+        <div className="flex border-b dark:border-white/[0.06] border-slate-200">
+          {weekGroups.map((wg, idx) => (
+            <div
+              key={idx}
+              className="shrink-0 h-7 flex items-center justify-center text-[9px] font-semibold dark:text-slate-400 text-slate-500 dark:bg-slate-800/40 bg-slate-50 border-r dark:border-white/[0.06] border-slate-200 overflow-hidden"
+              style={{ width: `${wg.count * DAY_W}px` }}
+            >
+              {wg.label}
+            </div>
+          ))}
+        </div>
+
+        {/* Row 3: day initials + day numbers */}
+        <div className="flex border-b dark:border-white/[0.10] border-slate-300">
+          {allDays.map((day) => {
+            const dow = day.date.getDay();
+            const isWeekend = dow === 0 || dow === 6;
+            return (
+              <div
+                key={day.offset}
+                className={`shrink-0 h-7 flex flex-col items-center justify-center border-r dark:border-white/[0.04] border-slate-100 text-[9px] leading-none gap-px select-none
+                  ${isWeekend
+                    ? "dark:bg-slate-700/50 bg-slate-200/70 dark:text-slate-500 text-slate-400"
+                    : "dark:bg-transparent bg-white dark:text-slate-500 text-slate-400"
+                  }`}
+                style={{ width: `${DAY_W}px` }}
+              >
+                <span className="font-bold">{DAY_INITIALS[dow]}</span>
+                <span>{day.date.getDate()}</span>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Bars + per-day grid */}
+        <div className="relative" style={{ width: `${totalWidth}px` }}>
+          {/* Per-day vertical gridlines */}
+          {allDays.map((day) => {
+            const isMonthBoundary = day.date.getDate() === 1;
+            const dow = day.date.getDay();
+            const isWeekend = dow === 0 || dow === 6;
+            return (
+              <div
+                key={day.offset}
+                className={`absolute top-0 bottom-0 w-px ${
+                  isMonthBoundary
+                    ? "dark:bg-white/[0.18] bg-slate-300"
+                    : isWeekend
+                    ? "dark:bg-white/[0.06] bg-slate-200"
+                    : "dark:bg-white/[0.03] bg-slate-100"
+                }`}
+                style={{ left: `${day.offset * DAY_W}px` }}
+              />
+            );
+          })}
+
+          {/* Last boundary line */}
+          <div
+            className="absolute top-0 bottom-0 w-px dark:bg-white/[0.08] bg-slate-200"
+            style={{ left: `${totalWidth}px` }}
+          />
+
+          {/* Rubro bars */}
+          {rubros.map((r, i) => {
+            const start = dayOffset(projectStart, r.fechaInicio);
+            const leftPx = Math.max(0, start) * DAY_W;
+            const widthPx = Math.max(DAY_W, r.duracion * DAY_W);
+            const c = barColors[i % barColors.length];
+            return (
+              <div key={r.id} className="relative h-10 mb-2">
+                {/* Track (planned) */}
+                <div
+                  className={`absolute top-1/2 -translate-y-1/2 h-6 rounded-lg overflow-hidden ${c.track}`}
+                  style={{ left: `${leftPx}px`, width: `${widthPx}px` }}
+                >
+                  {/* Progress fill (real) */}
+                  <div
+                    className={`h-full ${c.fill} transition-all duration-500`}
+                    style={{ width: `${r.avanceReal}%` }}
+                  />
+                </div>
+                {/* % label */}
+                <span
+                  className="absolute top-1/2 -translate-y-1/2 text-[10px] font-bold text-white/90 pointer-events-none pl-2 whitespace-nowrap z-10 drop-shadow"
+                  style={{ left: `${leftPx}px` }}
+                >
+                  {r.avanceReal}%
+                </span>
+                {/* Duration label */}
+                <span
+                  className="absolute top-1/2 -translate-y-1/2 text-[10px] dark:text-slate-500 text-slate-400 pl-1 whitespace-nowrap"
+                  style={{ left: `${leftPx + widthPx + 4}px` }}
+                >
+                  {r.duracion}d
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Tab type ─────────────────────────────────────────────────────────────────
 
 type Tab = "gantt" | "curvaS";
@@ -187,22 +378,13 @@ export function CronogramaClient({ proyecto, backHref, today }: Props) {
     return { projectStart: ps, totalDays: Math.max(dayOffset(ps, pe), 1) };
   }, [rubros]);
 
-  // ── Derived: Gantt day markers ───────────────────────────────────────────
-  const ganttMarkers = useMemo(() => {
-    const step = Math.max(5, Math.floor(totalDays / 6));
-    const marks: number[] = [0];
-    for (let d = step; d < totalDays; d += step) marks.push(d);
-    if (marks.at(-1) !== totalDays) marks.push(totalDays);
-    return marks;
-  }, [totalDays]);
-
   // ── Derived: Curva S chart data ───────────────────────────────────────────
   const chartData = useMemo(() => {
     const totalCost = rubros.reduce((s, r) => s + r.total, 0);
     if (totalCost === 0) return [];
 
-    // Checkpoints: up to 7 evenly-spaced points
-    const step = Math.max(1, Math.floor(totalDays / 6));
+    // Checkpoints every 3 days (scaled for very long projects to avoid overplotting)
+    const step = Math.max(3, Math.ceil(totalDays / 30));
     const checkpoints: number[] = [];
     for (let d = 0; d <= totalDays; d += step) checkpoints.push(d);
     if (checkpoints.at(-1) !== totalDays) checkpoints.push(totalDays);
@@ -389,6 +571,7 @@ export function CronogramaClient({ proyecto, backHref, today }: Props) {
                       <th className="text-right px-5 py-3">Costo Total</th>
                       <th className="text-center px-5 py-3">Fecha de Inicio</th>
                       <th className="text-center px-5 py-3">Duración (días)</th>
+                      <th className="text-center px-5 py-3">Fecha de Finalización</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y dark:divide-white/[0.04] divide-slate-100">
@@ -429,6 +612,17 @@ export function CronogramaClient({ proyecto, backHref, today }: Props) {
                             className={`${inputCls} w-20 text-center`}
                           />
                         </td>
+                        <td className="px-5 py-3.5 text-center">
+                          <span className="inline-block px-3 py-1.5 rounded-lg text-xs font-medium dark:bg-teal-900/30 bg-teal-50 dark:text-teal-300 text-teal-700 dark:border dark:border-teal-800/50 border border-teal-200 whitespace-nowrap">
+                            {new Date(
+                              addDaysToStr(r.fechaInicio, r.duracion - 1) + "T00:00:00"
+                            ).toLocaleDateString("es-PY", {
+                              day: "2-digit",
+                              month: "2-digit",
+                              year: "numeric",
+                            })}
+                          </span>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -463,98 +657,12 @@ export function CronogramaClient({ proyecto, backHref, today }: Props) {
               </div>
 
               <div className="p-5 overflow-x-auto">
-                <div className="flex gap-4" style={{ minWidth: "640px" }}>
-                  {/* Left column: rubro names */}
-                  <div className="w-32 shrink-0">
-                    {/* Header spacer aligns with day-markers row */}
-                    <div className="h-7" />
-                    {rubros.map((r, i) => (
-                      <div
-                        key={r.id}
-                        className="h-10 mb-2 flex items-center"
-                      >
-                        <span
-                          className={`text-xs font-semibold truncate ${BAR_COLORS[i % BAR_COLORS.length].label}`}
-                        >
-                          {r.nombre}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* Right area: day markers + bars */}
-                  <div className="flex-1 min-w-0">
-                    {/* Day markers */}
-                    <div className="relative h-7 mb-0">
-                      {ganttMarkers.map((day) => (
-                        <span
-                          key={day}
-                          className="absolute top-0 text-[10px] dark:text-slate-500 text-slate-400 -translate-x-1/2 whitespace-nowrap"
-                          style={{ left: `${(day / totalDays) * 100}%` }}
-                        >
-                          {day === 0 ? "Inicio" : `D${day}`}
-                        </span>
-                      ))}
-                    </div>
-
-                    {/* Bars + grid */}
-                    <div className="relative">
-                      {/* Vertical gridlines */}
-                      {ganttMarkers.map((day) => (
-                        <div
-                          key={day}
-                          className="absolute top-0 bottom-0 w-px dark:bg-white/[0.05] bg-slate-200"
-                          style={{ left: `${(day / totalDays) * 100}%` }}
-                        />
-                      ))}
-
-                      {rubros.map((r, i) => {
-                        const start = dayOffset(projectStart, r.fechaInicio);
-                        const leftPct = Math.max(0, (start / totalDays) * 100);
-                        const widthPct = Math.max(
-                          1,
-                          (r.duracion / totalDays) * 100
-                        );
-                        const c = BAR_COLORS[i % BAR_COLORS.length];
-
-                        return (
-                          <div key={r.id} className="relative h-10 mb-2">
-                            {/* Track (planned) */}
-                            <div
-                              className={`absolute top-1/2 -translate-y-1/2 h-7 rounded-lg overflow-hidden ${c.track}`}
-                              style={{
-                                left: `${leftPct}%`,
-                                width: `${widthPct}%`,
-                              }}
-                            >
-                              {/* Progress fill (real) */}
-                              <div
-                                className={`h-full ${c.fill} transition-all duration-500`}
-                                style={{ width: `${r.avanceReal}%` }}
-                              />
-                            </div>
-
-                            {/* % label */}
-                            <span
-                              className="absolute top-1/2 -translate-y-1/2 text-[10px] font-bold text-white/90 pointer-events-none pl-2 whitespace-nowrap z-10 drop-shadow"
-                              style={{ left: `${leftPct}%` }}
-                            >
-                              {r.avanceReal}%
-                            </span>
-
-                            {/* Duration label (right side of bar) */}
-                            <span
-                              className="absolute top-1/2 -translate-y-1/2 text-[10px] dark:text-slate-500 text-slate-400 pl-1 whitespace-nowrap"
-                              style={{ left: `${leftPct + widthPct + 0.5}%` }}
-                            >
-                              {r.duracion}d
-                            </span>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                </div>
+                <GanttGrid
+                  rubros={rubros}
+                  projectStart={projectStart}
+                  totalDays={totalDays}
+                  barColors={BAR_COLORS}
+                />
               </div>
             </div>
           </div>
@@ -667,17 +775,26 @@ export function CronogramaClient({ proyecto, backHref, today }: Props) {
                     <tr className="dark:bg-slate-800/40 bg-slate-50 text-xs dark:text-slate-400 text-slate-500 uppercase tracking-wide">
                       <th className="text-left px-5 py-3">Rubro</th>
                       <th className="text-right px-5 py-3">Presupuesto</th>
-                      <th className="text-center px-5 py-3 w-44">
-                        Avance Real %
-                      </th>
-                      <th className="text-right px-5 py-3">
-                        Monto a Certificar
-                      </th>
+                      <th className="text-center px-5 py-3 w-44">Avance Real %</th>
+                      <th className="text-center px-3 py-3 whitespace-nowrap">Inicio Real</th>
+                      <th className="text-center px-3 py-3 whitespace-nowrap">Fin Real</th>
+                      <th className="text-center px-3 py-3 whitespace-nowrap">Días Reales</th>
+                      <th className="text-center px-3 py-3 whitespace-nowrap">Diferencia</th>
+                      <th className="text-right px-5 py-3">Monto a Certificar</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y dark:divide-white/[0.04] divide-slate-100">
                     {rubros.map((r) => {
                       const montoCert = r.total * (r.avanceReal / 100);
+
+                      // Días reales y diferencia (solo cuando ambas fechas existen)
+                      const diasReales =
+                        r.fechaInicioReal && r.fechaFinReal
+                          ? dayOffset(r.fechaInicioReal, r.fechaFinReal) + 1
+                          : null;
+                      const diff =
+                        diasReales !== null ? diasReales - r.duracion : null;
+
                       return (
                         <tr
                           key={r.id}
@@ -705,34 +822,71 @@ export function CronogramaClient({ proyecto, backHref, today }: Props) {
                                   updateRubro(
                                     r.id,
                                     "avanceReal",
-                                    Math.min(
-                                      100,
-                                      Math.max(
-                                        0,
-                                        parseInt(e.target.value) || 0
-                                      )
-                                    )
+                                    Math.min(100, Math.max(0, parseInt(e.target.value) || 0))
                                   )
                                 }
                                 className={`${inputCls} w-20 text-center`}
                               />
-                              <span className="text-xs dark:text-slate-500 text-slate-400">
-                                %
-                              </span>
+                              <span className="text-xs dark:text-slate-500 text-slate-400">%</span>
                             </div>
-                            {/* Progress bar */}
                             <div className="mt-2 h-1.5 rounded-full dark:bg-slate-700 bg-slate-200 overflow-hidden mx-auto max-w-[120px]">
                               <div
                                 className={`h-full rounded-full transition-all duration-300 ${
-                                  r.avanceReal >= 100
-                                    ? "bg-teal-500"
-                                    : r.avanceReal > 0
-                                    ? "bg-amber-500"
-                                    : "bg-slate-500"
+                                  r.avanceReal >= 100 ? "bg-teal-500" : r.avanceReal > 0 ? "bg-amber-500" : "bg-slate-500"
                                 }`}
                                 style={{ width: `${r.avanceReal}%` }}
                               />
                             </div>
+                          </td>
+
+                          {/* Fecha inicio real */}
+                          <td className="px-3 py-4 text-center">
+                            <input
+                              type="date"
+                              value={r.fechaInicioReal ?? ""}
+                              onChange={(e) => updateRubro(r.id, "fechaInicioReal", e.target.value || undefined)}
+                              className={`${inputCls} w-32`}
+                            />
+                          </td>
+
+                          {/* Fecha fin real */}
+                          <td className="px-3 py-4 text-center">
+                            <input
+                              type="date"
+                              value={r.fechaFinReal ?? ""}
+                              onChange={(e) => updateRubro(r.id, "fechaFinReal", e.target.value || undefined)}
+                              className={`${inputCls} w-32`}
+                            />
+                          </td>
+
+                          {/* Días reales */}
+                          <td className="px-3 py-4 text-center">
+                            {diasReales !== null ? (
+                              <span className="font-mono text-xs font-semibold dark:text-slate-300 text-slate-600">
+                                {diasReales}d
+                              </span>
+                            ) : (
+                              <span className="text-xs dark:text-slate-600 text-slate-300">—</span>
+                            )}
+                          </td>
+
+                          {/* Diferencia vs Gantt */}
+                          <td className="px-3 py-4 text-center">
+                            {diff === null ? (
+                              <span className="text-xs dark:text-slate-600 text-slate-300">—</span>
+                            ) : diff === 0 ? (
+                              <span className="text-xs font-mono font-semibold dark:text-slate-400 text-slate-500">0</span>
+                            ) : (
+                              <span
+                                className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-mono font-bold ${
+                                  diff > 0
+                                    ? "dark:bg-red-500/15 bg-red-50 dark:text-red-400 text-red-600 dark:border dark:border-red-500/20 border border-red-200"
+                                    : "dark:bg-teal-500/15 bg-teal-50 dark:text-teal-400 text-teal-600 dark:border dark:border-teal-500/20 border border-teal-200"
+                                }`}
+                              >
+                                {diff > 0 ? `+${diff}` : diff}d
+                              </span>
+                            )}
                           </td>
 
                           {/* Monto a certificar */}
@@ -749,7 +903,7 @@ export function CronogramaClient({ proyecto, backHref, today }: Props) {
                   <tfoot>
                     <tr className="border-t dark:border-white/[0.06] border-slate-200 dark:bg-slate-800/40 bg-slate-50">
                       <td
-                        colSpan={3}
+                        colSpan={7}
                         className="px-5 py-3 text-right text-xs font-semibold dark:text-slate-300 text-slate-600 uppercase tracking-wide"
                       >
                         Total Certificado
@@ -760,21 +914,16 @@ export function CronogramaClient({ proyecto, backHref, today }: Props) {
                     </tr>
                     <tr className="dark:bg-slate-800/20 bg-slate-50/50">
                       <td
-                        colSpan={3}
+                        colSpan={7}
                         className="px-5 py-2.5 text-right text-xs dark:text-slate-500 text-slate-400"
                       >
                         Presupuesto total: {formatGs(totalCost)} —&nbsp;
-                        Saldo pendiente:{" "}
-                        {formatGs(totalCost - totalCertificado)}
+                        Saldo pendiente: {formatGs(totalCost - totalCertificado)}
                       </td>
                       <td className="px-5 py-2.5 text-right font-mono text-xs font-semibold dark:text-slate-400 text-slate-500">
                         {totalCost > 0
-                          ? (
-                              ((totalCost - totalCertificado) / totalCost) *
-                              100
-                            ).toFixed(1)
-                          : "0"}
-                        %
+                          ? (((totalCost - totalCertificado) / totalCost) * 100).toFixed(1)
+                          : "0"}%
                       </td>
                     </tr>
                   </tfoot>

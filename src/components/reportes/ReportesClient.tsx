@@ -360,39 +360,151 @@ function printGantt(
     ? `<img src="${empresa.logoUrl}" style="width:52pt;height:52pt;object-fit:contain;display:block;" />`
     : `<div class="logo-initial">${empresa.nombre.charAt(0)}</div>`;
 
-  let ganttRows = "";
-  rubros.forEach((r) => {
-    const start = dayOff(projectStart, r.fechaInicio);
-    const leftPct = (start / totalDays) * 100;
-    const widthPct = (r.duracion / totalDays) * 100;
-    const endDate = addDays(r.fechaInicio, r.duracion);
+  // ── Calendar header helpers ────────────────────────────────────────────────
+  const MONTHS_ES = ["ENE","FEB","MAR","ABR","MAY","JUN","JUL","AGO","SEP","OCT","NOV","DIC"];
+  const DIAS_INI  = ["D","L","M","M","J","V","S"]; // 0=Dom
+
+  // Column widths (pt). Landscape A4 usable ≈ 727pt.
+  // DAY_W fills exactly the remaining space so the table is always full-width.
+  const nameW      = 130;
+  const datesW     = 60;
+  const pctW       = mode === "profesional" ? 24 : 0;
+  const totalTabW  = 727;
+  const maxGridW   = totalTabW - nameW - datesW - pctW;
+  const DAY_W      = maxGridW / totalDays; // exact — no floor, fills 100%
+  const totalGridW = maxGridW;
+
+  // Build day array
+  const allDaysPrint = Array.from({ length: totalDays }, (_, i) => {
+    const d = new Date(projectStart + "T00:00:00");
+    d.setDate(d.getDate() + i);
+    return { offset: i, date: d };
+  });
+
+  // Month groups
+  type CalGroup = { label: string; count: number };
+  const monthGrpsPrint: CalGroup[] = [];
+  for (const day of allDaysPrint) {
+    const lbl = MONTHS_ES[day.date.getMonth()];
+    if (!monthGrpsPrint.length || monthGrpsPrint[monthGrpsPrint.length - 1].label !== lbl) {
+      monthGrpsPrint.push({ label: lbl, count: 1 });
+    } else {
+      monthGrpsPrint[monthGrpsPrint.length - 1].count++;
+    }
+  }
+
+  // Week groups
+  const weekGrpsPrint: CalGroup[] = [];
+  for (let wn = 1, i = 0; i < totalDays; i += 7, wn++) {
+    weekGrpsPrint.push({ label: `SEM ${wn}`, count: Math.min(7, totalDays - i) });
+  }
+
+  // ── <colgroup>: guarantees pixel-perfect alignment ───────────────────────
+  const colgroupHtml = `<colgroup>
+    <col style="width:${nameW}pt;">
+    ${allDaysPrint.map(() => `<col style="width:${DAY_W}pt;">`).join("")}
+    ${pctW ? `<col style="width:${pctW}pt;">` : ""}
+    <col style="width:${datesW}pt;">
+  </colgroup>`;
+
+  // ── Header cell styles ────────────────────────────────────────────────────
+  const S_HDR  = `background:#1e3a6e;color:#fff;font-weight:700;text-align:center;vertical-align:middle;border:0.5pt solid #16305a;padding:2pt 4pt;`;
+  const S_MON  = `background:#2c52a0;color:#fff;font-size:6pt;font-weight:700;text-align:center;border:0.5pt solid #1e3a80;letter-spacing:0.5pt;padding:2pt 1pt;`;
+  const S_WEK  = `background:#e4eaf6;color:#3d5298;font-size:5pt;font-weight:700;text-align:center;border:0.4pt solid #b8c4df;padding:1pt;`;
+  const S_DYN  = `background:#eff1f8;color:#666;font-size:4.5pt;text-align:center;border:0.4pt solid #d0d4e4;padding:1pt 0;line-height:5.5pt;`;
+  const S_DYW  = `background:#d8deee;color:#4a5a80;font-size:4.5pt;text-align:center;border:0.4pt solid #c0c8dc;padding:1pt 0;line-height:5.5pt;`;
+
+  const pctHdrCell = pctW
+    ? `<td rowspan="3" style="${S_HDR}font-size:6pt;">%</td>`
+    : "";
+
+  const theadRow1 = `<tr>
+    <td rowspan="3" style="${S_HDR}font-size:7.5pt;">RUBRO DE OBRA</td>
+    ${monthGrpsPrint.map(mg => `<td colspan="${mg.count}" style="${S_MON}">${mg.label}</td>`).join("")}
+    ${pctHdrCell}
+    <td rowspan="3" style="${S_HDR}font-size:5.5pt;">PERÍODO</td>
+  </tr>`;
+
+  const theadRow2 = `<tr>
+    ${weekGrpsPrint.map(wg => `<td colspan="${wg.count}" style="${S_WEK}">${wg.label}</td>`).join("")}
+  </tr>`;
+
+  const theadRow3 = `<tr>
+    ${allDaysPrint.map(day => {
+      const dow = day.date.getDay();
+      const isWE = dow === 0 || dow === 6;
+      return `<td style="${isWE ? S_DYW : S_DYN}">${DIAS_INI[dow]}<br/>${day.date.getDate()}</td>`;
+    }).join("")}
+  </tr>`;
+
+  // ── Per-day grid overlays (white base, weekend tint, boundary lines) ─────
+  const gridLinesHtml = allDaysPrint.map(day => {
+    const dow = day.date.getDay();
+    const isMonthBound = day.date.getDate() === 1;
+    const isWE = dow === 0 || dow === 6;
+    if (isMonthBound) {
+      return `<div style="position:absolute;top:0;bottom:0;left:${day.offset * DAY_W}pt;width:1pt;background:#7a90b8;z-index:1;"></div>`;
+    } else if (isWE) {
+      return `<div style="position:absolute;top:0;bottom:0;left:${day.offset * DAY_W}pt;width:${DAY_W}pt;background:#edf0f8;z-index:0;"></div>`;
+    } else {
+      return `<div style="position:absolute;top:0;bottom:0;left:${day.offset * DAY_W}pt;width:0.5pt;background:#dde1ee;z-index:0;"></div>`;
+    }
+  }).join("");
+
+  // ── Tbody cell styles ─────────────────────────────────────────────────────
+  const S_NAME = `font-size:8pt;padding:0 5pt;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;border-bottom:0.3pt solid #dde2ee;vertical-align:middle;`;
+  const S_GRID = `position:relative;padding:0;border-bottom:0.3pt solid #dde2ee;border-left:1pt solid #7a90b8;overflow:hidden;background:#ffffff;`;
+  const S_DATE = `font-size:5.5pt;text-align:right;color:#999;padding:0 3pt;border-bottom:0.3pt solid #dde2ee;vertical-align:middle;white-space:nowrap;line-height:7.5pt;`;
+  const S_PCT  = `font-size:7pt;text-align:right;color:#e03a2f;font-weight:700;padding:0 3pt;border-bottom:0.3pt solid #dde2ee;vertical-align:middle;`;
+
+  // ── Build tbody rows ──────────────────────────────────────────────────────
+  let tbodyHtml = "";
+  rubros.forEach((r, idx) => {
+    const start       = Math.max(0, dayOff(projectStart, r.fechaInicio));
+    const leftPt      = start * DAY_W;
+    const widthPt     = Math.max(DAY_W, r.duracion * DAY_W);
+    const endDate     = addDays(r.fechaInicio, r.duracion - 1);
+    const rowBg       = idx % 2 === 0 ? "#ffffff" : "#f7f9fc";
 
     if (mode === "cliente") {
-      // Clean Gantt: planned bar only, date range
-      ganttRows += `
-<div class="gantt-row">
-  <div class="gantt-name" title="${r.nombre}">${r.nombre}</div>
-  <div class="gantt-track">
-    <div class="gantt-bar-plan" style="left:${leftPct.toFixed(1)}%;width:${widthPct.toFixed(1)}%;"></div>
-  </div>
-  <div class="gantt-dates">${r.fechaInicio} → ${endDate}</div>
-</div>`;
+      tbodyHtml += `<tr style="height:16pt;background:${rowBg};">
+        <td style="${S_NAME}background:${rowBg};">${r.nombre}</td>
+        <td colspan="${totalDays}" style="${S_GRID}">
+          ${gridLinesHtml}
+          <div style="position:absolute;top:3.5pt;bottom:3.5pt;left:${leftPt}pt;width:${widthPt}pt;background:#3b7de9;border-radius:3pt;z-index:2;"></div>
+        </td>
+        <td style="${S_DATE}background:${rowBg};">${r.fechaInicio}<br/>→ ${endDate}</td>
+      </tr>`;
     } else {
-      // Profesional: planned + real bars + avance + desembolso
-      const realWidthPct = widthPct * (r.avanceReal / 100);
-      const desembolso = r.desembolso ? `<br/><small style="color:#888;">Desemb.: Gs ${new Intl.NumberFormat("es-PY").format(Math.round(r.desembolso))}</small>` : "";
-      ganttRows += `
-<div class="gantt-row">
-  <div class="gantt-name" title="${r.nombre}">${r.nombre}${desembolso}</div>
-  <div class="gantt-track">
-    <div class="gantt-bar-plan" style="left:${leftPct.toFixed(1)}%;width:${widthPct.toFixed(1)}%;"></div>
-    <div class="gantt-bar-real" style="left:${leftPct.toFixed(1)}%;width:${realWidthPct.toFixed(1)}%;top:40%;height:60%;"></div>
-  </div>
-  <div class="gantt-pct">${r.avanceReal}%</div>
-  <div class="gantt-dates">${r.fechaInicio} → ${endDate}</div>
-</div>`;
+      const realWidthPt = widthPt * (r.avanceReal / 100);
+      const desembolso  = r.desembolso
+        ? `<br/><span style="color:#aaa;font-size:5.5pt;">Gs ${new Intl.NumberFormat("es-PY").format(Math.round(r.desembolso))}</span>`
+        : "";
+      tbodyHtml += `<tr style="height:16pt;background:${rowBg};">
+        <td style="${S_NAME}background:${rowBg};">${r.nombre}${desembolso}</td>
+        <td colspan="${totalDays}" style="${S_GRID}">
+          ${gridLinesHtml}
+          <div style="position:absolute;top:3.5pt;bottom:3.5pt;left:${leftPt}pt;width:${widthPt}pt;background:#3b7de9;opacity:0.6;border-radius:3pt;z-index:2;"></div>
+          <div style="position:absolute;top:7pt;bottom:3.5pt;left:${leftPt}pt;width:${realWidthPt}pt;background:#e03a2f;border-radius:3pt;z-index:3;"></div>
+        </td>
+        <td style="${S_PCT}background:${rowBg};">${r.avanceReal}%</td>
+        <td style="${S_DATE}background:${rowBg};">${r.fechaInicio}<br/>→ ${endDate}</td>
+      </tr>`;
     }
   });
+
+  // ── Assemble the full Gantt table ─────────────────────────────────────────
+  const ganttRows = `
+<div style="overflow:hidden;border:1pt solid #7a90b8;border-radius:3pt;margin-bottom:4pt;">
+  <table style="border-collapse:collapse;table-layout:fixed;width:100%;">
+    ${colgroupHtml}
+    <thead>${theadRow1}${theadRow2}${theadRow3}</thead>
+    <tbody>${tbodyHtml}</tbody>
+  </table>
+</div>`;
+
+
+
 
   const today = new Date().toLocaleDateString("es-PY", { day: "2-digit", month: "long", year: "numeric" });
   const totalCertificado = rubros.reduce((s, r) => s + r.total * (r.avanceReal / 100), 0);
@@ -447,16 +559,22 @@ function printGantt(
 </table>`;
   }
 
-  const ganttStyleExtra = mode === "cliente"
+  const ganttStyleExtra = `@page{size:A4 landscape;margin:12mm 15mm;}` + (mode === "cliente"
     ? `.gantt-pct{display:none;}.gantt-bar-real{display:none;}`
-    : ``;
+    : ``);
 
   const legendHtml = mode === "profesional"
-    ? `<div style="margin-bottom:6pt;font-size:7.5pt;display:flex;gap:14pt;align-items:center;">
-  <span><span style="display:inline-block;width:16pt;height:8pt;background:#3b82f6;opacity:0.6;border-radius:2pt;vertical-align:middle;margin-right:3pt;"></span>Planificado</span>
-  <span><span style="display:inline-block;width:16pt;height:8pt;background:#10b981;border-radius:2pt;vertical-align:middle;margin-right:3pt;"></span>Realizado</span>
+    ? `<div style="margin-bottom:4pt;font-size:7pt;display:flex;gap:14pt;align-items:center;">
+  <span><span style="display:inline-block;width:14pt;height:7pt;background:#3b7de9;opacity:0.6;border-radius:2pt;vertical-align:middle;margin-right:3pt;"></span>Planificado</span>
+  <span><span style="display:inline-block;width:14pt;height:7pt;background:#e03a2f;border-radius:2pt;vertical-align:middle;margin-right:3pt;"></span>Avance real</span>
+  <span><span style="display:inline-block;width:8pt;height:7pt;background:#ccd2de;border-radius:1pt;vertical-align:middle;margin-right:3pt;"></span>Fin de semana</span>
+  <span style="color:#999;">│ Línea vertical gruesa = inicio de mes</span>
 </div>`
-    : ``;
+    : `<div style="margin-bottom:4pt;font-size:7pt;display:flex;gap:14pt;align-items:center;">
+  <span><span style="display:inline-block;width:14pt;height:7pt;background:#3b82f6;opacity:0.7;border-radius:2pt;vertical-align:middle;margin-right:3pt;"></span>Planificado</span>
+  <span><span style="display:inline-block;width:8pt;height:7pt;background:#ccd2de;border-radius:1pt;vertical-align:middle;margin-right:3pt;"></span>Fin de semana</span>
+  <span style="color:#999;">│ Línea vertical gruesa = inicio de mes</span>
+</div>`;
 
   const body = `
 <style>${ganttStyleExtra}</style>

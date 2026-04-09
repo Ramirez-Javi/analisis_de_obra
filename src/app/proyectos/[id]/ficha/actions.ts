@@ -1,7 +1,15 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
+import { auth } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
+
+// Helper de autorización reutilizable
+async function requireAuth() {
+  const session = await auth();
+  if (!session?.user) throw new Error("No autorizado — iniciá sesión para continuar");
+  return session;
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // EQUIPO TÉCNICO
@@ -17,6 +25,7 @@ export interface MiembroData {
 }
 
 export async function agregarMiembro(proyectoId: string, data: MiembroData) {
+  await requireAuth();
   await prisma.miembroEquipo.create({
     data: {
       nombre: data.nombre.trim(),
@@ -33,6 +42,7 @@ export async function agregarMiembro(proyectoId: string, data: MiembroData) {
 }
 
 export async function eliminarMiembro(id: string, proyectoId: string) {
+  await requireAuth();
   await prisma.miembroEquipo.delete({ where: { id } });
   revalidatePath(`/proyectos/${proyectoId}/ficha`);
 }
@@ -52,6 +62,7 @@ export interface ReunionData {
 }
 
 export async function agregarReunion(proyectoId: string, data: ReunionData) {
+  await requireAuth();
   await prisma.reunion.create({
     data: {
       fecha: new Date(data.fecha),
@@ -68,6 +79,7 @@ export async function agregarReunion(proyectoId: string, data: ReunionData) {
 }
 
 export async function actualizarReunion(id: string, proyectoId: string, data: ReunionData) {
+  await requireAuth();
   await prisma.reunion.update({
     where: { id },
     data: {
@@ -84,6 +96,7 @@ export async function actualizarReunion(id: string, proyectoId: string, data: Re
 }
 
 export async function eliminarReunion(id: string, proyectoId: string) {
+  await requireAuth();
   await prisma.reunion.delete({ where: { id } });
   revalidatePath(`/proyectos/${proyectoId}/ficha`);
 }
@@ -102,6 +115,7 @@ export interface AnotacionData {
 }
 
 export async function agregarAnotacion(proyectoId: string, data: AnotacionData) {
+  await requireAuth();
   await prisma.anotacion.create({
     data: {
       fecha: new Date(data.fecha),
@@ -117,6 +131,7 @@ export async function agregarAnotacion(proyectoId: string, data: AnotacionData) 
 }
 
 export async function eliminarAnotacion(id: string, proyectoId: string) {
+  await requireAuth();
   await prisma.anotacion.delete({ where: { id } });
   revalidatePath(`/proyectos/${proyectoId}/ficha`);
 }
@@ -155,6 +170,7 @@ function toDate(s?: string) {
 }
 
 export async function guardarAprobacion(proyectoId: string, data: AprobacionData) {
+  await requireAuth();
   const payload = {
     fechaInicioContractual:    toDate(data.fechaInicioContractual),
     fechaFinContractual:       toDate(data.fechaFinContractual),

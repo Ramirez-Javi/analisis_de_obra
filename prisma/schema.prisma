@@ -144,7 +144,9 @@ model Empresa {
   pais      String?
   logoUrl   String? // URL o path relativo del logo
 
-  proyectos Proyecto[]
+  proyectos   Proyecto[]
+  usuarios    Usuario[]
+  proveedores Proveedor[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -210,6 +212,11 @@ model Proyecto {
   reuniones       Reunion[]
   anotaciones     Anotacion[]
   aprobacion      AprobacionProyecto?
+
+  // Módulo 7: Estado Financiero
+  movimientosFinancieros MovimientoFinanciero[]
+  // Módulo 8: Proveedores y Compras
+  facturasProveedores    FacturaProveedor[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -396,8 +403,9 @@ model ContratoManoObra {
   proyectoId String
   proyecto   Proyecto @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
 
-  personal PersonalCuadrilla[]
-  pagos    PagoContrato[]
+  personal    PersonalCuadrilla[]
+  pagos       PagoContrato[]
+  movimientos MovimientoFinanciero[]
 
   // Rubros asignados a este contrato (muchos a muchos)
   rubrosAsignados ContratoRubroProyecto[]
@@ -501,6 +509,8 @@ model CuotaPago {
 
   proyectoId String
   proyecto   Proyecto @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
+
+  movimientos MovimientoFinanciero[]
 
   @@map("cuota_pago")
 }
@@ -617,12 +627,213 @@ model Usuario {
   id        String     @id @default(cuid())
   email     String     @unique
   nombre    String
+  apellido  String     @default("")
   password  String     // bcrypt hash
   rol       RolUsuario @default(USUARIO)
   activo    Boolean    @default(true)
+
+  empresaId String?
+  empresa   Empresa?   @relation(fields: [empresaId], references: [id])
+
+  permisos               PermisoModulo[]
+  sesiones               SesionHistorial[]
+  movimientosAutorizados MovimientoFinanciero[] @relation("MovimientosAutorizados")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@map("usuario")
+}
+
+// ============================================================
+// GESTIÓN DE USUARIOS — PERMISOS POR MÓDULO
+// ============================================================
+
+enum ModuloSistema {
+  PROYECTO
+  PRESUPUESTO
+  CRONOGRAMA
+  MANO_OBRA
+  LOGISTICA
+  REPORTES
+  FINANCIERO
+  COMPRAS
+}
+
+/// Control granular: qué módulos puede acceder cada usuario USUARIO
+/// Los ADMIN tienen acceso total implícito (no se usan permisos)
+model PermisoModulo {
+  id        String        @id @default(cuid())
+  modulo    ModuloSistema
+
+  usuarioId String
+  usuario   Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@unique([usuarioId, modulo])
+  @@map("permiso_modulo")
+}
+
+/// Historial de inicio de sesión por usuario
+model SesionHistorial {
+  id        String   @id @default(cuid())
+  fechaHora DateTime @default(now())
+  ipAddress String?
+  userAgent String?
+
+  usuarioId String
+  usuario   Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@map("sesion_historial")
+}
+
+// ============================================================
+// MÓDULO 7 — ESTADO FINANCIERO (LIBRO MAYOR)
+// ============================================================
+
+enum TipoMovimiento {
+  INGRESO
+  EGRESO
+}
+
+enum MetodoPago {
+  EFECTIVO
+  CHEQUE
+  TRANSFERENCIA
+  GIRO
+  OTRO
+}
+
+/// Categoría contable del movimiento
+enum CategoriaMovimiento {
+  ANTICIPO_PROPIETARIO
+  CUOTA_PROPIETARIO
+  PAGO_MANO_OBRA
+  PAGO_PROVEEDOR
+  HONORARIO_PROFESIONAL
+  GASTO_ADMINISTRATIVO
+  DEVOLUCION
+  OTRO
+}
+
+/// Movimiento financiero del Libro Mayor (Ingreso o Egreso por proyecto)
+/// El saldo se calcula en runtime — no se persiste para evitar inconsistencias
+model MovimientoFinanciero {
+  id                 String              @id @default(cuid())
+  fecha              DateTime
+  tipo               TipoMovimiento
+  categoria          CategoriaMovimiento @default(OTRO)
+  concepto           String              // Por qué se realizó el movimiento
+  beneficiario       String              // A quién se pagó / de quién se recibió
+  monto              Float
+
+  nroComprobante     String?             // N° de recibo o factura de referencia
+  autorizadoPor      String?             // Nombre del responsable que autorizó
+
+  metodoPago         MetodoPago
+  otroMetodoDetalle  String?             // Descripción libre si metodoPago = OTRO
+
+  // Campos para CHEQUE
+  nroCheque          String?
+  bancoCheque        String?
+  fechaEmisionCheque DateTime?
+
+  // Campos para TRANSFERENCIA / GIRO
+  nroTransaccion     String?
+  bancoTransfer      String?
+
+  observacion        String?
+
+  // Relación principal
+  proyectoId         String
+  proyecto           Proyecto             @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
+
+  // Relaciones opcionales de trazabilidad
+  proveedorId            String?
+  proveedor              Proveedor?        @relation(fields: [proveedorId], references: [id])
+
+  cuotaPagoId            String?
+  cuotaPago              CuotaPago?        @relation(fields: [cuotaPagoId], references: [id])
+
+  contratoManoObraId     String?
+  contratoManoObra       ContratoManoObra? @relation(fields: [contratoManoObraId], references: [id])
+
+  autorizadoPorUsuarioId String?
+  autorizadoPorUsuario   Usuario?          @relation("MovimientosAutorizados", fields: [autorizadoPorUsuarioId], references: [id])
+
+  // Facturas pagadas con este movimiento
+  facturasPagadas        FacturaProveedor[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("movimiento_financiero")
+}
+
+// ============================================================
+// MÓDULO 8 — PROVEEDORES Y COMPRAS
+// ============================================================
+
+enum EstadoFactura {
+  PENDIENTE
+  PAGADA
+  ANULADA
+}
+
+/// Proveedor global de la empresa (reutilizable en todos los proyectos)
+model Proveedor {
+  id               String  @id @default(cuid())
+  razonSocial      String
+  ruc              String? // RUC / CUIT / N° de identificación legal
+  tipoPersona      String  @default("JURIDICA") // FISICA | JURIDICA
+  direccion        String? // Dirección física del proveedor
+  emailEmpresa     String? // Email institucional de la empresa
+  vendedores       String? // Nombres de vendedores de contacto (texto libre)
+  contactoNombre   String?
+  contactoTelefono String?
+  contactoEmail    String?
+  banco            String?
+  tipoCuenta       String? // AHORRO | CORRIENTE
+  numeroCuenta     String?
+  observaciones    String?
+  activo           Boolean @default(true)
+
+  empresaId   String
+  empresa     Empresa @relation(fields: [empresaId], references: [id])
+
+  facturas    FacturaProveedor[]
+  movimientos MovimientoFinanciero[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("proveedor")
+}
+
+/// Factura de proveedor asociada a un proyecto
+/// montoPagado se actualiza al registrar movimientos vinculados
+model FacturaProveedor {
+  id               String        @id @default(cuid())
+  nroFactura       String
+  fecha            DateTime
+  concepto         String        // Ej: "15 bolsas de cemento"
+  monto            Float         // Monto total de la factura
+  montoPagado      Float         @default(0)
+  estado           EstadoFactura @default(PENDIENTE)
+  fechaVencimiento DateTime?
+  observacion      String?
+
+  proveedorId  String
+  proveedor    Proveedor @relation(fields: [proveedorId], references: [id])
+
+  proyectoId   String
+  proyecto     Proyecto  @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
+
+  // Movimiento financiero con el que se pagó (null = aún sin pagar)
+  movimientoId String?
+  movimiento   MovimientoFinanciero? @relation(fields: [movimientoId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("factura_proveedor")
 }

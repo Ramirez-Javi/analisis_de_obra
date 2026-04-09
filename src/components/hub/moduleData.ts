@@ -5,6 +5,8 @@ import {
   HardHat,
   Truck,
   FileDown,
+  Landmark,
+  ShoppingCart,
   type LucideIcon,
 } from "lucide-react";
 
@@ -19,6 +21,8 @@ export interface ModuleDefinition {
   shadowColor: string;
   accentColor: string;
   badge?: string;
+  /** Valor del enum ModuloSistema en Prisma — se usa para filtrar por permisos */
+  moduloEnum: string;
 }
 
 export const MODULES: ModuleDefinition[] = [
@@ -33,6 +37,7 @@ export const MODULES: ModuleDefinition[] = [
     gradient: "from-blue-500 to-cyan-500",
     shadowColor: "shadow-blue-500/20",
     accentColor: "dark:text-blue-400 text-blue-600",
+    moduloEnum: "PROYECTO",
   },
   {
     id: "presupuesto",
@@ -46,6 +51,7 @@ export const MODULES: ModuleDefinition[] = [
     shadowColor: "shadow-emerald-500/20",
     accentColor: "dark:text-emerald-400 text-emerald-600",
     badge: "Core",
+    moduloEnum: "PRESUPUESTO",
   },
   {
     id: "cronograma",
@@ -58,6 +64,7 @@ export const MODULES: ModuleDefinition[] = [
     gradient: "from-violet-500 to-purple-500",
     shadowColor: "shadow-violet-500/20",
     accentColor: "dark:text-violet-400 text-violet-600",
+    moduloEnum: "CRONOGRAMA",
   },
   {
     id: "mano-obra",
@@ -70,6 +77,7 @@ export const MODULES: ModuleDefinition[] = [
     gradient: "from-orange-500 to-amber-500",
     shadowColor: "shadow-orange-500/20",
     accentColor: "dark:text-orange-400 text-orange-600",
+    moduloEnum: "MANO_OBRA",
   },
   {
     id: "logistica",
@@ -82,6 +90,7 @@ export const MODULES: ModuleDefinition[] = [
     gradient: "from-yellow-500 to-orange-400",
     shadowColor: "shadow-yellow-500/20",
     accentColor: "dark:text-yellow-400 text-yellow-600",
+    moduloEnum: "LOGISTICA",
   },
   {
     id: "reportes",
@@ -94,5 +103,34 @@ export const MODULES: ModuleDefinition[] = [
     gradient: "from-rose-500 to-pink-500",
     shadowColor: "shadow-rose-500/20",
     accentColor: "dark:text-rose-400 text-rose-600",
+    moduloEnum: "REPORTES",
+  },
+  {
+    id: "financiero",
+    title: "Estado Financiero",
+    subtitle: "Libro Mayor, Debe/Haber y Saldo de la obra",
+    description:
+      "Registra todos los movimientos de ingreso y egreso. Controla el saldo disponible, m\u00e9todos de pago y autoriza pagos con comprobante.",
+    href: "/financiero",
+    icon: Landmark,
+    gradient: "from-sky-500 to-blue-600",
+    shadowColor: "shadow-sky-500/20",
+    accentColor: "dark:text-sky-400 text-sky-600",
+    badge: "Nuevo",
+    moduloEnum: "FINANCIERO",
+  },
+  {
+    id: "compras",
+    title: "Proveedores y Compras",
+    subtitle: "Facturas, cuentas por pagar y directorio de proveedores",
+    description:
+      "Gestiona facturas de proveedores, controla montos pendientes y pagados, y administra el directorio global de proveedores de la empresa.",
+    href: "/compras",
+    icon: ShoppingCart,
+    gradient: "from-orange-500 to-red-500",
+    shadowColor: "shadow-orange-500/20",
+    accentColor: "dark:text-orange-400 text-orange-600",
+    badge: "Nuevo",
+    moduloEnum: "COMPRAS",
   },
 ];

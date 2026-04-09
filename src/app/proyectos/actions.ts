@@ -1,6 +1,7 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
+import { auth } from "@/lib/auth";
 import type { NuevoProyectoFormValues } from "@/components/proyecto/types";
 
 // Tipo de retorno explícito para manejo de errores en el cliente
@@ -27,6 +28,9 @@ function parseDate(s: string): Date | null {
 export async function crearProyecto(
   data: NuevoProyectoFormValues
 ): Promise<AccionResultado> {
+  const session = await auth();
+  if (!session?.user) return { ok: false, error: "No autorizado. Iniciá sesión." };
+
   try {
     // Código REQUERIDO — no se auto-genera
     const codigo = data.codigo?.trim();
@@ -145,6 +149,9 @@ export async function crearProyecto(
 export async function eliminarProyecto(
   id: string
 ): Promise<{ ok: true } | { ok: false; error: string }> {
+  const session = await auth();
+  if (!session?.user) return { ok: false, error: "No autorizado." };
+
   try {
     await prisma.proyecto.delete({ where: { id } });
     const { revalidatePath } = await import("next/cache");
@@ -164,6 +171,9 @@ export async function editarProyecto(
   id: string,
   data: NuevoProyectoFormValues
 ): Promise<AccionResultado> {
+  const session = await auth();
+  if (!session?.user) return { ok: false, error: "No autorizado." };
+
   try {
     // ── Empresa: upsert global ──
     let empresaId: string | null = null;
