@@ -1,5 +1,6 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ShoppingCart } from "lucide-react";
+import { ShoppingCart, ChevronLeft, LayoutDashboard } from "lucide-react";
 import { getSession } from "@/lib/session";
 import { getProveedoresGlobales } from "./actions";
 import { ProveedoresGlobalClient } from "@/components/compras/ProveedoresGlobalClient";
@@ -14,6 +15,19 @@ export default async function ComprasRootPage() {
 
   return (
     <div className="p-4 md:p-6 space-y-6">
+      {/* Navegación de retorno */}
+      <nav className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
+        <Link
+          href="/"
+          className="flex items-center gap-1 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+        >
+          <LayoutDashboard className="w-3.5 h-3.5" />
+          Centro de Mando
+        </Link>
+        <ChevronLeft className="w-3.5 h-3.5 rotate-180" />
+        <span className="text-gray-700 dark:text-gray-200 font-medium">Proveedores y Compras</span>
+      </nav>
+
       {/* Encabezado */}
       <div className="flex items-center gap-3">
         <div className="rounded-xl bg-orange-600 p-2.5">

@@ -64,6 +64,9 @@ model MaterialMaestro {
   // Cada material maestro puede aparecer en muchas recetas maestras
   recetasMaestras RecetaMaestraDetalle[]
 
+  // Módulo Inventario
+  recepcionesBodega RecepcionBodega[]
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -219,6 +222,10 @@ model Proyecto {
   trabajosAdicionales    TrabajoAdicional[]
   // Módulo 8: Proveedores y Compras
   facturasProveedores    FacturaProveedor[]
+
+  // Módulo 9: Inventario / As-Built
+  ambientes              AmbienteProyecto[]
+  recepcionesBodega      RecepcionBodega[]
 
   // ── Datos contractuales (Módulo Financiero) ──────────────────────────────
   montoContrato        Float?   // Monto base del contrato con el cliente
@@ -683,12 +690,93 @@ enum ModuloSistema {
   PROYECTO
   PRESUPUESTO
   CRONOGRAMA
+  FINANCIERO
   MANO_OBRA
   LOGISTICA
-  REPORTES
-  FINANCIERO
   COMPRAS
+  INVENTARIO
+  REPORTES
 }
+
+// ============================================================
+// MÓDULO 9 — INVENTARIO / AS-BUILT
+// ============================================================
+
+/// Zonificación de la obra: ambientes o espacios físicos
+model AmbienteProyecto {
+  id     String @id @default(cuid())
+  nombre String // Ej: "Cocina", "Baño Suite", "Living-Comedor"
+
+  proyectoId String
+  proyecto   Proyecto @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
+
+  // Registros de instalación que referencian este ambiente
+  asBuiltRegistros AsBuiltRegistro[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("ambiente_proyecto")
+}
+
+/// Entrada de materiales a bodega de obra
+/// Captura la trazabilidad completa por remisión/lote
+model RecepcionBodega {
+  id               String   @id @default(cuid())
+  fechaRecepcion   DateTime @default(now())
+  cantidadRecibida Float
+  nroRemision      String?  // Número de remisión del proveedor
+
+  // Trazabilidad de acabados
+  marca            String?  // Marca del producto
+  modeloSKU        String?  // SKU o código de modelo
+  nroLote          String?  // Número de lote de fabricación
+
+  // Especificación para materiales a granel
+  especificacionTecnica String? // Ej: "Granulometría 4ta", "Lavada de río"
+
+  // Responsable de recepción
+  responsableReceptor String? // Nombre del capataz/encargado
+
+  proyectoId  String
+  proyecto    Proyecto        @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
+
+  materialId  String
+  material    MaterialMaestro @relation(fields: [materialId], references: [id])
+
+  proveedorId String?
+  proveedor   Proveedor?      @relation(fields: [proveedorId], references: [id])
+
+  // Salidas (registros de instalación As-Built)
+  asBuiltRegistros AsBuiltRegistro[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("recepcion_bodega")
+}
+
+/// Registro de instalación As-Built: cruza ambiente con lote de material
+/// Es la "Data Cruda" para Facility Management
+model AsBuiltRegistro {
+  id                  String   @id @default(cuid())
+  fechaInstalacion    DateTime @default(now())
+  cantidadInstalada   Float
+  dosificacionOMezcla String?  // Ej: "3A + 1B", "Pintura con 30cc entonador"
+  mecanismoInstalacion String? // Ej: "Doble encolado", "Soplete", "Vaciado"
+
+  ambienteId  String
+  ambiente    AmbienteProyecto @relation(fields: [ambienteId], references: [id], onDelete: Cascade)
+
+  recepcionId String
+  recepcion   RecepcionBodega  @relation(fields: [recepcionId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("as_built_registro")
+}
+
 
 /// Control granular: qué módulos puede acceder cada usuario USUARIO
 /// Los ADMIN tienen acceso total implícito (no se usan permisos)
@@ -843,6 +931,7 @@ model Proveedor {
 
   facturas    FacturaProveedor[]
   movimientos MovimientoFinanciero[]
+  recepcionesBodega RecepcionBodega[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

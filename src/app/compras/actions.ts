@@ -89,6 +89,29 @@ export async function actualizarProveedorGlobal(id: string, data: Partial<Provee
 }
 
 // ─────────────────────────────────────────────
+// ELIMINAR proveedor global
+// ─────────────────────────────────────────────
+export async function eliminarProveedorGlobal(id: string) {
+  await requireEmpresa();
+  try {
+    const proveedor = await prisma.proveedor.findUnique({
+      where: { id },
+      select: { _count: { select: { facturas: true } } },
+    });
+    if (!proveedor) return { ok: false, error: "Proveedor no encontrado" };
+    if (proveedor._count.facturas > 0) {
+      return { ok: false, error: "No se puede eliminar: el proveedor tiene facturas asociadas" };
+    }
+    await prisma.proveedor.delete({ where: { id } });
+    revalidatePath("/compras");
+    return { ok: true };
+  } catch (err) {
+    console.error("[compras-global] eliminarProveedor:", err);
+    return { ok: false, error: "Error al eliminar el proveedor" };
+  }
+}
+
+// ─────────────────────────────────────────────
 // ACTIVAR / DESACTIVAR proveedor
 // ─────────────────────────────────────────────
 export async function toggleActivarProveedor(id: string) {

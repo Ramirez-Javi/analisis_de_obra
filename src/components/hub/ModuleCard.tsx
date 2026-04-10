@@ -4,25 +4,40 @@ import type { ModuleDefinition } from "./moduleData";
 
 interface ModuleCardProps {
   module: ModuleDefinition;
+  variant?: "default" | "project";
 }
 
-export function ModuleCard({ module }: ModuleCardProps) {
+export function ModuleCard({ module, variant = "default" }: ModuleCardProps) {
   const Icon = module.icon;
+  const isProject = variant === "project";
 
   return (
     <Link
       href={module.href}
-      className="group relative flex flex-col h-full p-6 rounded-2xl overflow-hidden cursor-pointer select-none outline-none focus-visible:ring-2 focus-visible:ring-teal-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-950 dark:bg-slate-900 bg-white dark:border dark:border-white/[0.06] border border-slate-200 dark:hover:border-teal-500/30 hover:border-teal-400/40 shadow-md dark:shadow-none hover:shadow-xl dark:hover:shadow-2xl transition-all duration-300 ease-out hover:-translate-y-1"
+      className={`group relative flex flex-col h-full p-6 rounded-2xl overflow-hidden cursor-pointer select-none outline-none focus-visible:ring-2 focus-visible:ring-teal-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-950 transition-all duration-300 ease-out hover:-translate-y-1 ${
+        isProject
+          ? "dark:bg-[#060a0e] bg-white dark:border dark:border-cyan-500/20 border border-slate-200 dark:hover:border-cyan-400/50 hover:border-teal-400/40 shadow-md dark:shadow-[0_0_16px_0_rgba(20,184,166,0.07)] dark:hover:shadow-[0_0_28px_0_rgba(20,184,166,0.18)]"
+          : "dark:bg-slate-900 bg-white dark:border dark:border-white/[0.06] border border-slate-200 dark:hover:border-teal-500/30 hover:border-teal-400/40 shadow-md dark:shadow-none hover:shadow-xl dark:hover:shadow-2xl"
+      }`}
     >
       {/* Glow de fondo en hover */}
       <div
-        className={`absolute inset-0 opacity-0 group-hover:opacity-[0.05] bg-gradient-to-br ${module.gradient} transition-opacity duration-300`}
+        className={`absolute inset-0 bg-gradient-to-br ${module.gradient} transition-opacity duration-300 ${
+          isProject ? "opacity-[0.04] group-hover:opacity-[0.09]" : "opacity-0 group-hover:opacity-[0.05]"
+        }`}
       />
 
-      {/* Línea superior iluminada en hover */}
+      {/* Línea superior neon */}
       <div
-        className={`absolute top-0 left-0 right-0 h-px bg-gradient-to-r ${module.gradient} opacity-0 group-hover:opacity-70 transition-opacity duration-300`}
+        className={`absolute top-0 left-0 right-0 bg-gradient-to-r ${module.gradient} transition-all duration-300 ${
+          isProject ? "h-[1.5px] opacity-50 group-hover:opacity-100 group-hover:h-[2px]" : "h-px opacity-0 group-hover:opacity-70"
+        }`}
       />
+
+      {/* Borde izquierdo neon — solo en variant project */}
+      {isProject && (
+        <div className={`absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b ${module.gradient}`} />
+      )}
 
       {/* Ícono */}
       <div

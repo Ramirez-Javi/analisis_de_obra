@@ -4,12 +4,13 @@ import { useState, useTransition } from "react";
 import { toast } from "sonner";
 import {
   Plus, X, ChevronDown, ChevronUp, ShieldOff, Shield,
-  Pencil, Save, Users, Phone, Mail, Building2, CreditCard, Search,
+  Pencil, Save, Users, Phone, Mail, Building2, CreditCard, Search, Trash2,
 } from "lucide-react";
 import {
   crearProveedorGlobal,
   actualizarProveedorGlobal,
   toggleActivarProveedor,
+  eliminarProveedorGlobal,
 } from "@/app/compras/actions";
 import type { ProveedorData } from "@/app/compras/actions";
 import type { Proveedor } from "@prisma/client";
@@ -154,14 +155,29 @@ function FormProveedor({
 }
 
 // ─── Fila expandible de proveedor ────────────────────────────
-function FilaProveedor({ proveedor, onToggle, onUpdated }: {
+function FilaProveedor({ proveedor, onToggle, onUpdated, onEliminar }: {
   proveedor: ProveedorConCount;
   onToggle: (id: string) => void;
   onUpdated: (p: ProveedorConCount) => void;
+  onEliminar: (id: string) => void;
 }) {
   const [expanded, setExpanded] = useState(false);
   const [editMode, setEditMode] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const [pending, startTransition] = useTransition();
+
+  function handleEliminar() {
+    startTransition(async () => {
+      const res = await eliminarProveedorGlobal(proveedor.id);
+      if (res.ok) {
+        toast.success(`Proveedor "${proveedor.razonSocial}" eliminado`);
+        onEliminar(proveedor.id);
+      } else {
+        toast.error(res.error ?? "Error al eliminar");
+        setConfirmDelete(false);
+      }
+    });
+  }
 
   function handleSave(data: ProveedorData) {
     startTransition(async () => {
@@ -316,7 +332,7 @@ function FilaProveedor({ proveedor, onToggle, onUpdated }: {
                 )}
               </div>
               {/* Acciones */}
-              <div className="flex items-center gap-2 pt-1">
+              <div className="flex items-center gap-2 pt-1 flex-wrap">
                 <button
                   onClick={() => setEditMode(true)}
                   className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 text-xs text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
@@ -333,6 +349,33 @@ function FilaProveedor({ proveedor, onToggle, onUpdated }: {
                 >
                   {proveedor.activo ? <><ShieldOff className="w-3.5 h-3.5" /> Desactivar</> : <><Shield className="w-3.5 h-3.5" /> Activar</>}
                 </button>
+
+                {/* Eliminar */}
+                {!confirmDelete ? (
+                  <button
+                    onClick={() => setConfirmDelete(true)}
+                    className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-red-200 dark:border-red-800 text-xs text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors ml-auto"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" /> Eliminar
+                  </button>
+                ) : (
+                  <div className="flex items-center gap-2 ml-auto">
+                    <span className="text-xs text-red-600 dark:text-red-400 font-medium">¿Eliminar definitivamente?</span>
+                    <button
+                      onClick={handleEliminar}
+                      disabled={pending}
+                      className="px-3 py-1.5 rounded-lg bg-red-600 hover:bg-red-700 text-white text-xs font-medium disabled:opacity-50 transition-colors"
+                    >
+                      {pending ? "Eliminando…" : "Confirmar"}
+                    </button>
+                    <button
+                      onClick={() => setConfirmDelete(false)}
+                      className="px-3 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 text-xs text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                    >
+                      Cancelar
+                    </button>
+                  </div>
+                )}
               </div>
             </>
           )}
@@ -422,6 +465,10 @@ export function ProveedoresGlobalClient({ proveedores: initial }: Props) {
     setProveedores((prev) => prev.map((p) => p.id === updated.id ? updated : p));
   }
 
+  function handleEliminar(id: string) {
+    setProveedores((prev) => prev.filter((p) => p.id !== id));
+  }
+
   const activos = proveedores.filter((p) => p.activo).length;
   const inactivos = proveedores.length - activos;
 
@@ -491,6 +538,7 @@ export function ProveedoresGlobalClient({ proveedores: initial }: Props) {
               proveedor={p}
               onToggle={handleToggle}
               onUpdated={handleUpdated}
+              onEliminar={handleEliminar}
             />
           ))
         )}
