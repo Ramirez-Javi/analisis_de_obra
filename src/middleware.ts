@@ -17,7 +17,7 @@ export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
   // Rutas públicas — sin autenticación
-  const publicPaths = ["/login", "/registro", "/sin-acceso"];
+  const publicPaths = ["/login", "/registro", "/sin-acceso", "/api/debug-auth"];
   if (publicPaths.some((p) => pathname.startsWith(p))) {
     return NextResponse.next();
   }
