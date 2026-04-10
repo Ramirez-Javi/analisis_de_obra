@@ -1,7 +1,13 @@
-import { NextRequest, NextResponse } from "next/server";
-import { getToken } from "next-auth/jwt";
+﻿import NextAuth from "next-auth";
+import { authConfig } from "@/lib/auth.config";
+import { NextResponse } from "next/server";
 
-// Mapa de segmentos de ruta → módulo requerido (solo aplica a USUARIO, no ADMIN)
+/**
+ * proxy.ts - Edge Runtime (patron oficial NextAuth v5)
+ * Instancia sin Prisma para leer authjs.session-token correctamente.
+ */
+const { auth } = NextAuth(authConfig);
+
 const MODULO_POR_RUTA: Array<{ pattern: RegExp; modulo: string }> = [
   { pattern: /\/ficha(\/|$)/, modulo: "PROYECTO" },
   { pattern: /\/presupuesto(\/|$)/, modulo: "PRESUPUESTO" },
@@ -13,32 +19,29 @@ const MODULO_POR_RUTA: Array<{ pattern: RegExp; modulo: string }> = [
   { pattern: /\/compras(\/|$)/, modulo: "COMPRAS" },
 ];
 
-export async function proxy(req: NextRequest) {
+export const proxy = auth(function (req) {
   const { pathname } = req.nextUrl;
 
-  // Rutas públicas — sin autenticación
   const publicPaths = ["/login", "/registro", "/sin-acceso", "/api/debug-auth"];
   if (publicPaths.some((p) => pathname.startsWith(p))) {
     return NextResponse.next();
   }
 
-  // Verificar JWT
-  const token = await getToken({ req, secret: process.env.AUTH_SECRET });
-
-  if (!token) {
+  if (!req.auth) {
     const loginUrl = new URL("/login", req.url);
     loginUrl.searchParams.set("callbackUrl", pathname);
     return NextResponse.redirect(loginUrl);
   }
 
-  // Rutas de administración — solo ADMIN
-  if (pathname.startsWith("/admin") && token.role !== "ADMIN") {
+  const user = req.auth.user as { role?: string; permisos?: string[] };
+  const role = user?.role;
+
+  if (pathname.startsWith("/admin") && role !== "ADMIN") {
     return NextResponse.redirect(new URL("/sin-acceso", req.url));
   }
 
-  // Control de permisos por módulo — solo aplica a USUARIO (ADMIN tiene acceso total)
-  if (token.role !== "ADMIN") {
-    const permisos = (token.permisos as string[]) ?? [];
+  if (role !== "ADMIN") {
+    const permisos = user?.permisos ?? [];
     for (const { pattern, modulo } of MODULO_POR_RUTA) {
       if (pattern.test(pathname) && !permisos.includes(modulo)) {
         return NextResponse.redirect(new URL("/sin-acceso", req.url));
@@ -47,7 +50,7 @@ export async function proxy(req: NextRequest) {
   }
 
   return NextResponse.next();
-}
+});
 
 export const config = {
   matcher: [

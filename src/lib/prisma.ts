@@ -5,7 +5,9 @@ import { PrismaPg } from "@prisma/adapter-pg";
 function crearCliente() {
   const adapter = new PrismaPg({
     connectionString: process.env.DATABASE_URL!,
-    max: 1, // connection_limit=1 para serverless/PgBouncer
+    max: 1,                        // límite para serverless / PgBouncer
+    connectionTimeoutMillis: 10000, // 10s timeout de conexión
+    idleTimeoutMillis: 10000,       // liberar conexiones idle rápido
   });
   return new PrismaClient({
     adapter,
