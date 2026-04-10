@@ -5,6 +5,7 @@ import { PrismaPg } from "@prisma/adapter-pg";
 function crearCliente() {
   const adapter = new PrismaPg({
     connectionString: process.env.DATABASE_URL!,
+    max: 1, // connection_limit=1 para serverless/PgBouncer
   });
   return new PrismaClient({
     adapter,

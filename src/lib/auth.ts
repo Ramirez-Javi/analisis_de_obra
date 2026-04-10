@@ -42,10 +42,10 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           );
           if (!passwordMatch) return null;
 
-          // Registrar inicio de sesión en historial
-          await prisma.sesionHistorial.create({
+          // Registrar inicio de sesión en historial (non-blocking)
+          prisma.sesionHistorial.create({
             data: { usuarioId: usuario.id },
-          });
+          }).catch(() => {});
 
           return {
             id: usuario.id,
