@@ -13,7 +13,7 @@ const MODULO_POR_RUTA: Array<{ pattern: RegExp; modulo: string }> = [
   { pattern: /\/compras(\/|$)/, modulo: "COMPRAS" },
 ];
 
-export async function middleware(req: NextRequest) {
+export async function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
   // Rutas públicas — sin autenticación
