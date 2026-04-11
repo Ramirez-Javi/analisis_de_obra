@@ -69,7 +69,7 @@ export function RegistroForm() {
           <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br from-teal-500 to-cyan-600 shadow-lg shadow-teal-500/30 mb-4">
             <Building2 size={26} className="text-white" />
           </div>
-          <h1 className="text-2xl font-bold dark:text-white text-slate-900">TEKOINNOVA</h1>
+          <h1 className="text-2xl font-bold dark:text-white text-slate-900">TEKÓGA</h1>
           <p className="text-sm dark:text-slate-400 text-slate-500 mt-1">
             Registro de Administrador — Configuración Inicial
           </p>

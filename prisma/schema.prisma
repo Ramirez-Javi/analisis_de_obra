@@ -227,8 +227,8 @@ model Proyecto {
   ambientes              AmbienteProyecto[]
   recepcionesBodega      RecepcionBodega[]
 
-  // ── Datos contractuales (Módulo Financiero) ──────────────────────────────
-  montoContrato        Float?   // Monto base del contrato con el cliente
+    // Módulo 10: Bitácora de Obra
+    bitacoraEntradas       BitacoraEntrada[]
   formaPago            String?  // Ej: "Anticipo 30% + cuotas mensuales"
   objetoContrato       String?  // Descripción corta del objeto del contrato
   fechaContrato        DateTime?
@@ -695,6 +695,7 @@ enum ModuloSistema {
   LOGISTICA
   COMPRAS
   INVENTARIO
+  BITACORA
   REPORTES
 }
 
@@ -777,6 +778,77 @@ model AsBuiltRegistro {
   @@map("as_built_registro")
 }
 
+
+// ============================================================
+// MÓDULO 10 — BITÁCORA DE OBRA
+// ============================================================
+
+/// Entrada diaria del libro de obra — nivel profesional (SWOT + personal + rubros)
+model BitacoraEntrada {
+  id               String   @id @default(cuid())
+  fecha            DateTime
+  horaInicio       String?  // "07:00"
+  horaFin          String?  // "17:00"
+  turno            String?  // "Mañana", "Tarde", "Completo"
+
+  // Condiciones del día
+  clima            String?  // "Soleado", "Lluvioso", "Nublado", "Ventoso"
+  temperatura      Float?   // °C
+
+  // Actividades del día
+  descripcionGeneral String  // Resumen obligatorio de lo ejecutado
+
+  // FODA del día
+  aspectosPositivos  String? // Logros, buenas prácticas
+  aspectosNegativos  String? // Problemas, incidentes, retrasos
+  oportunidades      String? // Mejoras detectadas, situaciones favorables
+  amenazas           String? // Riesgos, factores externos adversos
+
+  // Seguimiento
+  observaciones      String? // Notas adicionales / instrucciones para mañana
+  enlaceFotos        String? // URL a carpeta Drive/Dropbox con fotos del día
+  responsableFirma   String? // Nombre del fiscal/encargado que carga la entrada
+
+  proyectoId  String
+  proyecto    Proyecto @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
+
+  rubrosDelDia    BitacoraRubro[]
+  personalDelDia  BitacoraPersonal[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("bitacora_entrada")
+}
+
+/// Trabajo específico ejecutado en la jornada
+model BitacoraRubro {
+  id          String  @id @default(cuid())
+  descripcion String  // "Colocación de ladrillo en muro perimetral"
+  cantidad    Float?  // Cantidad ejecutada
+  unidad      String? // "m²", "m³", "u", "kg"
+  avancePct   Float?  // % de avance en ese rubro (0–100)
+  observacion String?
+
+  entradaId   String
+  entrada     BitacoraEntrada @relation(fields: [entradaId], references: [id], onDelete: Cascade)
+
+  @@map("bitacora_rubro")
+}
+
+/// Personal presente en la jornada
+model BitacoraPersonal {
+  id            String  @id @default(cuid())
+  nombre        String
+  categoria     String? // "Albañil", "Oficial", "Peón", "Electricista", "Plomero"
+  horasTrabajadas Float? // 8.0, 4.5, etc.
+  observacion   String?
+
+  entradaId     String
+  entrada       BitacoraEntrada @relation(fields: [entradaId], references: [id], onDelete: Cascade)
+
+  @@map("bitacora_personal")
+}
 
 /// Control granular: qué módulos puede acceder cada usuario USUARIO
 /// Los ADMIN tienen acceso total implícito (no se usan permisos)

@@ -50,7 +50,7 @@ function LoginForm() {
             <Building2 size={26} className="text-white" />
           </div>
           <h1 className="text-2xl font-bold dark:text-white text-slate-900">
-            TEKOINNOVA
+            TEKÓGA
           </h1>
           <p className="text-sm dark:text-slate-400 text-slate-500 mt-1">
             Centro de Mando — Gestión de Obras

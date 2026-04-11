@@ -379,9 +379,9 @@ export function UsuariosManager({ usuarios }: Props) {
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-sm font-semibold dark:text-slate-300 text-slate-700 flex items-center gap-2">
             <Users size={14} className="text-slate-400" />
-            Funcionarios ({funcionarios.length} / 5)
+            Funcionarios ({funcionarios.length} / 10)
           </h2>
-          {!showForm && funcionarios.length < 5 && (
+          {!showForm && funcionarios.length < 10 && (
             <button
               onClick={() => setShowForm(true)}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-teal-600 hover:bg-teal-500 text-white transition-colors"

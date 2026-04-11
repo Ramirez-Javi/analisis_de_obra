@@ -6,7 +6,7 @@ import { getMovimientos } from "./actions";
 import { FinancieroClient } from "@/components/financiero/FinancieroClient";
 import { Landmark, ChevronLeft, LayoutDashboard } from "lucide-react";
 
-export const metadata = { title: "Estado Financiero — TEKOINNOVA" };
+export const metadata = { title: "Estado Financiero — TEKÓGA" };
 
 export default async function FinancieroPage({
   params,

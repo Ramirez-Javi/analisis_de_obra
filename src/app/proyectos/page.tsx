@@ -1,10 +1,15 @@
 import Link from "next/link";
 import { ArrowLeft, Plus, FolderOpen, MapPin, User, ArrowRight, Calculator, Info } from "lucide-react";
 import { prisma } from "@/lib/prisma";
+import { getSession } from "@/lib/session";
 import { DeleteProyectoButton } from "@/components/proyecto/DeleteProyectoButton";
 
 async function getProyectos() {
+  const session = await getSession();
+  if (!session?.user) return [];
+  const empresaId = (session.user as { empresaId?: string }).empresaId;
   return prisma.proyecto.findMany({
+    where: { empresaId: empresaId ?? undefined },
     orderBy: { createdAt: "desc" },
     select: {
       id: true,

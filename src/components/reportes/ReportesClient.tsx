@@ -138,7 +138,7 @@ interface CostoLogistica {
 // ─────────────────────────────────────────────────────────────
 
 const DEFAULT_EMPRESA: EmpresaConfig = {
-  nombre: "TEKOINNOVA",
+  nombre: "TEKÓGA",
   slogan: "Soluciones de Arquitectura e Ingeniería",
   direccion: "Asunción, Paraguay",
   email: "contacto@empresa.com",
@@ -319,7 +319,7 @@ function openPrintWindow(title: string, bodyHtml: string) {
 <style>${PRINT_BASE_STYLES}</style></head><body>
 ${bodyHtml}
 <div class="copyright-footer">
-  &copy; ${year} TekoInnova &mdash; Todos los derechos reservados &mdash; <strong>www.tekoinnova.com</strong>
+  &copy; ${year} Tekóga &mdash; Todos los derechos reservados &mdash; <strong>www.tekoinnova.com</strong>
 </div>
 </body></html>`,
   );
@@ -1437,7 +1437,7 @@ const EMPRESA_FIELDS: {
   label: string;
   placeholder: string;
 }[] = [
-  { key: "nombre", label: "Nombre de la empresa", placeholder: "TEKOINNOVA" },
+  { key: "nombre", label: "Nombre de la empresa", placeholder: "TEKÓGA" },
   {
     key: "slogan",
     label: "Eslogan",
@@ -1469,7 +1469,7 @@ function CopyrightFooter() {
   const year = new Date().getFullYear();
   return (
     <div className="copyright-footer mt-12 pt-4 border-t border-slate-200 dark:border-slate-700 text-center text-[10px] text-slate-400">
-      &copy; {year} TekoInnova &mdash; Todos los derechos reservados &mdash;{" "}
+      &copy; {year} Tekóga &mdash; Todos los derechos reservados &mdash;{" "}
       <span className="font-semibold">www.tekoinnova.com</span>
     </div>
   );

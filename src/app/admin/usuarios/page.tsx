@@ -7,7 +7,7 @@ import { redirect } from "next/navigation";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Gestión de Usuarios — TEKOINNOVA",
+  title: "Gestión de Usuarios — TEKÓGA",
 };
 
 async function getUsuarios() {
@@ -66,7 +66,7 @@ export default async function AdminUsuariosPage() {
             Usuarios del sistema
           </h1>
           <p className="mt-2 text-sm dark:text-slate-400 text-slate-500 max-w-xl">
-            El administrador puede agregar hasta <strong className="dark:text-slate-300 text-slate-700">5 funcionarios</strong> con acceso
+            El administrador puede agregar hasta <strong className="dark:text-slate-300 text-slate-700">10 funcionarios</strong> con acceso
             restringido a módulos específicos del Centro de Mando.
           </p>
         </div>

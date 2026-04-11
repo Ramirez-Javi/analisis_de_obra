@@ -47,17 +47,20 @@ export async function crearProyecto(
       };
     }
 
-    // ── Empresa: upsert del registro global (primer registro existente o nuevo) ──
+    // Resolve the current admin's empresaId from the DB (JWT may be stale)
+    const userId = (session.user as { id?: string }).id!;
+    const userRecord = await prisma.usuario.findUnique({
+      where: { id: userId },
+      select: { empresaId: true },
+    });
+    let sessionEmpresaId = userRecord?.empresaId ?? null;
+
+    // ── Empresa: upsert del registro de la propia empresa ──────────────
     let empresaId: string | null = null;
     if (data.empresa.nombre.trim() !== "") {
-      const empresaExistente = await prisma.empresa.findFirst({
-        orderBy: { createdAt: "asc" },
-        select: { id: true },
-      });
-
-      if (empresaExistente) {
+      if (sessionEmpresaId) {
         await prisma.empresa.update({
-          where: { id: empresaExistente.id },
+          where: { id: sessionEmpresaId },
           data: {
             nombre:    data.empresa.nombre.trim(),
             titulo:    data.empresa.titulo.trim()    || null,
@@ -70,7 +73,7 @@ export async function crearProyecto(
             logoUrl:   data.empresa.logoUrl.trim()   || null,
           },
         });
-        empresaId = empresaExistente.id;
+        empresaId = sessionEmpresaId;
       } else {
         const nueva = await prisma.empresa.create({
           data: {
@@ -86,7 +89,13 @@ export async function crearProyecto(
           },
           select: { id: true },
         });
+        // Link admin user to the new empresa
+        await prisma.usuario.update({
+          where: { id: userId },
+          data: { empresaId: nueva.id },
+        });
         empresaId = nueva.id;
+        sessionEmpresaId = nueva.id;
       }
     }
 
@@ -155,6 +164,21 @@ export async function eliminarProyecto(
   if (!session?.user) return { ok: false, error: "No autorizado." };
 
   try {
+    // Verify ownership — only allow deleting projects that belong to this user's empresa
+    const userId = (session.user as { id?: string }).id!;
+    const userRecord = await prisma.usuario.findUnique({
+      where: { id: userId },
+      select: { empresaId: true },
+    });
+    const sessionEmpresaId = userRecord?.empresaId;
+    if (sessionEmpresaId) {
+      const proyecto = await prisma.proyecto.findFirst({
+        where: { id, empresaId: sessionEmpresaId },
+        select: { id: true },
+      });
+      if (!proyecto) return { ok: false, error: "Proyecto no encontrado." };
+    }
+
     await prisma.proyecto.delete({ where: { id } });
     const { revalidatePath } = await import("next/cache");
     revalidatePath("/proyectos");
@@ -177,16 +201,28 @@ export async function editarProyecto(
   if (!session?.user) return { ok: false, error: "No autorizado." };
 
   try {
-    // ── Empresa: upsert global ──
-    let empresaId: string | null = null;
-    if (data.empresa.nombre.trim() !== "") {
-      const empresaExistente = await prisma.empresa.findFirst({
-        orderBy: { createdAt: "asc" },
+    // Resolve and verify ownership
+    const userId = (session.user as { id?: string }).id!;
+    const userRecord = await prisma.usuario.findUnique({
+      where: { id: userId },
+      select: { empresaId: true },
+    });
+    const sessionEmpresaId = userRecord?.empresaId ?? null;
+
+    if (sessionEmpresaId) {
+      const existing = await prisma.proyecto.findFirst({
+        where: { id, empresaId: sessionEmpresaId },
         select: { id: true },
       });
-      if (empresaExistente) {
+      if (!existing) return { ok: false, error: "Proyecto no encontrado." };
+    }
+
+    // ── Empresa: upsert del registro de la propia empresa ──────────────
+    let empresaId: string | null = null;
+    if (data.empresa.nombre.trim() !== "") {
+      if (sessionEmpresaId) {
         await prisma.empresa.update({
-          where: { id: empresaExistente.id },
+          where: { id: sessionEmpresaId },
           data: {
             nombre:    data.empresa.nombre.trim(),
             titulo:    data.empresa.titulo.trim()    || null,
@@ -199,7 +235,7 @@ export async function editarProyecto(
             logoUrl:   data.empresa.logoUrl.trim()   || null,
           },
         });
-        empresaId = empresaExistente.id;
+        empresaId = sessionEmpresaId;
       } else {
         const nueva = await prisma.empresa.create({
           data: {
@@ -214,6 +250,10 @@ export async function editarProyecto(
             logoUrl:   data.empresa.logoUrl.trim()   || null,
           },
           select: { id: true },
+        });
+        await prisma.usuario.update({
+          where: { id: userId },
+          data: { empresaId: nueva.id },
         });
         empresaId = nueva.id;
       }

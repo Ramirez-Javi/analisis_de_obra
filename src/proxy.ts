@@ -17,6 +17,8 @@ const MODULO_POR_RUTA: Array<{ pattern: RegExp; modulo: string }> = [
   { pattern: /\/reportes(\/|$)/, modulo: "REPORTES" },
   { pattern: /\/financiero(\/|$)/, modulo: "FINANCIERO" },
   { pattern: /\/compras(\/|$)/, modulo: "COMPRAS" },
+  { pattern: /\/inventario(\/|$)/, modulo: "INVENTARIO" },
+  { pattern: /\/bitacora(\/|$)/, modulo: "BITACORA" },
 ];
 
 export const proxy = auth(function (req) {

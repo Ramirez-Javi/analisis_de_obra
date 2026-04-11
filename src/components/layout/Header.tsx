@@ -20,10 +20,10 @@ export async function Header() {
           </div>
           <div className="flex flex-col leading-none">
             <span className="text-[10px] font-semibold tracking-[0.25em] uppercase dark:text-teal-400 text-teal-600">
-              TEKOINNOVA
+              TEKÓGA
             </span>
             <span className="text-sm font-bold dark:text-slate-100 text-slate-800 hidden sm:block">
-              Architectural Precision Engine
+              Innovación en Construcción
             </span>
           </div>
         </div>

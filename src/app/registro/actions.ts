@@ -30,6 +30,15 @@ export async function registrarUsuario(data: {
   if (password.length < 8) {
     return { ok: false, error: "La contraseña debe tener al menos 8 caracteres." };
   }
+  if (!/[A-Z]/.test(password)) {
+    return { ok: false, error: "La contraseña debe incluir al menos una letra mayúscula." };
+  }
+  if (!/[0-9]/.test(password)) {
+    return { ok: false, error: "La contraseña debe incluir al menos un número." };
+  }
+  if (!/[^A-Za-z0-9]/.test(password)) {
+    return { ok: false, error: "La contraseña debe incluir al menos un caracter especial." };
+  }
 
   // Verificar si ya existe un usuario con ese email
   const existente = await prisma.usuario.findUnique({ where: { email } });

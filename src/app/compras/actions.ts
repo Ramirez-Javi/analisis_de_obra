@@ -77,9 +77,9 @@ export async function crearProveedorGlobal(data: ProveedorData) {
 // ACTUALIZAR proveedor global
 // ─────────────────────────────────────────────
 export async function actualizarProveedorGlobal(id: string, data: Partial<ProveedorData>) {
-  await requireEmpresa();
+  const { empresaId } = await requireEmpresa();
   try {
-    await prisma.proveedor.update({ where: { id }, data });
+    await prisma.proveedor.update({ where: { id, empresaId }, data });
     revalidatePath("/compras");
     return { ok: true };
   } catch (err) {
@@ -92,17 +92,17 @@ export async function actualizarProveedorGlobal(id: string, data: Partial<Provee
 // ELIMINAR proveedor global
 // ─────────────────────────────────────────────
 export async function eliminarProveedorGlobal(id: string) {
-  await requireEmpresa();
+  const { empresaId } = await requireEmpresa();
   try {
-    const proveedor = await prisma.proveedor.findUnique({
-      where: { id },
+    const proveedor = await prisma.proveedor.findFirst({
+      where: { id, empresaId },
       select: { _count: { select: { facturas: true } } },
     });
     if (!proveedor) return { ok: false, error: "Proveedor no encontrado" };
     if (proveedor._count.facturas > 0) {
       return { ok: false, error: "No se puede eliminar: el proveedor tiene facturas asociadas" };
     }
-    await prisma.proveedor.delete({ where: { id } });
+    await prisma.proveedor.delete({ where: { id, empresaId } });
     revalidatePath("/compras");
     return { ok: true };
   } catch (err) {
@@ -115,15 +115,15 @@ export async function eliminarProveedorGlobal(id: string) {
 // ACTIVAR / DESACTIVAR proveedor
 // ─────────────────────────────────────────────
 export async function toggleActivarProveedor(id: string) {
-  await requireEmpresa();
+  const { empresaId } = await requireEmpresa();
   try {
-    const actual = await prisma.proveedor.findUnique({
-      where: { id },
+    const actual = await prisma.proveedor.findFirst({
+      where: { id, empresaId },
       select: { activo: true },
     });
     if (!actual) return { ok: false, error: "Proveedor no encontrado" };
     await prisma.proveedor.update({
-      where: { id },
+      where: { id, empresaId },
       data: { activo: !actual.activo },
     });
     revalidatePath("/compras");

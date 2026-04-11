@@ -8,6 +8,7 @@
   Landmark,
   ShoppingCart,
   ClipboardList,
+  BookOpen,
   type LucideIcon,
 } from "lucide-react";
 
@@ -141,7 +142,22 @@ export const MODULES: ModuleDefinition[] = [
     badge: "Nuevo",
     moduloEnum: "INVENTARIO",
   },
-  // 9 — Exportación y Reportes
+  // 9 — Bitácora de Obra
+  {
+    id: "bitacora",
+    title: "Bitácora de Obra",
+    subtitle: "Libro diario, FODA, personal y avances por jornada",
+    description:
+      "Actas diarias profesionales con condiciones climáticas, personal presente, rubros ejecutados, análisis FODA y alertas de stock de materiales.",
+    href: "/bitacora",
+    icon: BookOpen,
+    gradient: "from-cyan-500 to-teal-500",
+    shadowColor: "shadow-cyan-500/20",
+    accentColor: "dark:text-cyan-400 text-cyan-600",
+    badge: "Nuevo",
+    moduloEnum: "BITACORA",
+  },
+  // 10 — Exportación y Reportes
   {
     id: "reportes",
     title: "Exportación y Reportes",

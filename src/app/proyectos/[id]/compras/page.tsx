@@ -5,7 +5,7 @@ import { getProveedoresDelProyecto, getProveedoresParaSelect } from "./actions";
 import { ComprasClient } from "@/components/compras/ComprasClient";
 import { ShoppingCart } from "lucide-react";
 
-export const metadata = { title: "Proveedores y Compras — TEKOINNOVA" };
+export const metadata = { title: "Proveedores y Compras — TEKÓGA" };
 
 export default async function ComprasPage({
   params,

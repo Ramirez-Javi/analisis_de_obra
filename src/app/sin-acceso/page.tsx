@@ -3,7 +3,7 @@ import { ShieldX, ArrowLeft } from "lucide-react";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Sin acceso — TEKOINNOVA",
+  title: "Sin acceso — TEKÓGA",
 };
 
 export default function SinAccesoPage() {

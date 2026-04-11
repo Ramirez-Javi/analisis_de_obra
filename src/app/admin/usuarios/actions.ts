@@ -5,7 +5,7 @@ import { auth } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 import bcrypt from "bcryptjs";
 
-const MAX_USUARIOS_ADICIONALES = 5; // Máximo usuarios no-admin
+const MAX_USUARIOS_ADICIONALES = 10; // Máximo usuarios no-admin
 
 // ── Helper de autorización ──────────────────────────────────────────────────
 
@@ -15,7 +15,14 @@ async function requireAdmin() {
   if (!session?.user || role !== "ADMIN") {
     throw new Error("Solo los administradores pueden realizar esta acción.");
   }
-  return session;
+  // Resolve empresaId — JWT may be stale, always re-read from DB
+  const userId = (session.user as { id?: string }).id!;
+  const userRecord = await prisma.usuario.findUnique({
+    where: { id: userId },
+    select: { empresaId: true },
+  });
+  const empresaId = userRecord?.empresaId ?? null;
+  return { session, empresaId, userId };
 }
 
 // ── Tipos públicos ──────────────────────────────────────────────────────────
@@ -28,7 +35,9 @@ export type ModuloPermiso =
   | "LOGISTICA"
   | "REPORTES"
   | "FINANCIERO"
-  | "COMPRAS";
+  | "COMPRAS"
+  | "INVENTARIO"
+  | "BITACORA";
 
 export interface NuevoUsuarioData {
   nombre: string;
@@ -47,7 +56,7 @@ export type AccionUsuarioResultado =
 export async function crearUsuario(
   data: NuevoUsuarioData
 ): Promise<AccionUsuarioResultado> {
-  await requireAdmin();
+  const { empresaId } = await requireAdmin();
 
   const email = data.email.trim().toLowerCase();
   const nombre = data.nombre.trim();
@@ -64,14 +73,23 @@ export async function crearUsuario(
   if (data.password.length < 8) {
     return { ok: false, error: "La contraseña debe tener al menos 8 caracteres." };
   }
+  if (!/[A-Z]/.test(data.password)) {
+    return { ok: false, error: "La contraseña debe incluir al menos una letra mayúscula." };
+  }
+  if (!/[0-9]/.test(data.password)) {
+    return { ok: false, error: "La contraseña debe incluir al menos un número." };
+  }
+  if (!/[^A-Za-z0-9]/.test(data.password)) {
+    return { ok: false, error: "La contraseña debe incluir al menos un caracter especial." };
+  }
 
   if (data.permisos.length === 0) {
     return { ok: false, error: "Asigná al menos un módulo al usuario." };
   }
 
-  // Límite de usuarios USUARIO
+  // Límite de usuarios USUARIO scoped a esta empresa
   const cantidadUsuarios = await prisma.usuario.count({
-    where: { rol: "USUARIO" },
+    where: { rol: "USUARIO", empresaId: empresaId ?? undefined },
   });
   if (cantidadUsuarios >= MAX_USUARIOS_ADICIONALES) {
     return {
@@ -95,6 +113,7 @@ export async function crearUsuario(
       password: hash,
       rol: "USUARIO",
       activo: true,
+      empresaId: empresaId ?? undefined,
       permisos: {
         create: data.permisos.map((modulo) => ({ modulo })),
       },
@@ -139,6 +158,15 @@ export async function cambiarPasswordUsuario(
 
   if (nuevaPassword.length < 8) {
     return { ok: false, error: "La contraseña debe tener al menos 8 caracteres." };
+  }
+  if (!/[A-Z]/.test(nuevaPassword)) {
+    return { ok: false, error: "La contraseña debe incluir al menos una letra mayúscula." };
+  }
+  if (!/[0-9]/.test(nuevaPassword)) {
+    return { ok: false, error: "La contraseña debe incluir al menos un número." };
+  }
+  if (!/[^A-Za-z0-9]/.test(nuevaPassword)) {
+    return { ok: false, error: "La contraseña debe incluir al menos un caracter especial." };
   }
 
   const hash = await bcrypt.hash(nuevaPassword, 12);

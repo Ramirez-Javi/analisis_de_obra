@@ -11,7 +11,7 @@ const geistSans = Geist({
 });
 
 export const metadata: Metadata = {
-  title: "TEKOINNOVA — Centro de Mando",
+  title: "TEKÓGA — Centro de Mando",
   description: "ERP de gestión de presupuestos y control de obras de arquitectura",
 };
 

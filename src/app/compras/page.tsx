@@ -5,7 +5,7 @@ import { getSession } from "@/lib/session";
 import { getProveedoresGlobales } from "./actions";
 import { ProveedoresGlobalClient } from "@/components/compras/ProveedoresGlobalClient";
 
-export const metadata = { title: "Proveedores — TEKOINNOVA" };
+export const metadata = { title: "Proveedores — TEKÓGA" };
 
 export default async function ComprasRootPage() {
   const session = await getSession();

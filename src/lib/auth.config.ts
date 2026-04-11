@@ -5,7 +5,7 @@ import type { NextAuthConfig } from "next-auth";
  * Usada por proxy.ts (Edge Runtime) y extendida por auth.ts (Node.js Runtime).
  */
 export const authConfig: NextAuthConfig = {
-  session: { strategy: "jwt" },
+  session: { strategy: "jwt", maxAge: 8 * 60 * 60 }, // 8-hour sessions
   pages: {
     signIn: "/login",
   },

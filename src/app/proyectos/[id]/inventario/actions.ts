@@ -10,10 +10,22 @@ async function requireSession() {
   return session;
 }
 
+/** Checks that the project exists and belongs to the current user's empresa. */
+async function requireProyecto(proyectoId: string) {
+  const session = await requireSession();
+  const empresaId = (session.user as { empresaId?: string }).empresaId;
+  const proyecto = await prisma.proyecto.findFirst({
+    where: { id: proyectoId, ...(empresaId ? { empresaId } : {}) },
+    select: { id: true },
+  });
+  if (!proyecto) throw new Error("Proyecto no encontrado o sin acceso.");
+  return proyecto;
+}
+
 // ─── AMBIENTES ──────────────────────────────────────────────
 
 export async function getAmbientes(proyectoId: string) {
-  await requireSession();
+  await requireProyecto(proyectoId);
   return prisma.ambienteProyecto.findMany({
     where: { proyectoId },
     orderBy: { nombre: "asc" },
@@ -24,7 +36,7 @@ export async function getAmbientes(proyectoId: string) {
 }
 
 export async function crearAmbiente(proyectoId: string, nombre: string) {
-  await requireSession();
+  await requireProyecto(proyectoId);
   if (!nombre.trim()) return { ok: false, error: "El nombre es requerido" };
   try {
     const ambiente = await prisma.ambienteProyecto.create({
@@ -38,7 +50,7 @@ export async function crearAmbiente(proyectoId: string, nombre: string) {
 }
 
 export async function eliminarAmbiente(proyectoId: string, ambienteId: string) {
-  await requireSession();
+  await requireProyecto(proyectoId);
   try {
     await prisma.ambienteProyecto.delete({ where: { id: ambienteId } });
     revalidatePath(`/proyectos/${proyectoId}/inventario`);
@@ -51,7 +63,7 @@ export async function eliminarAmbiente(proyectoId: string, ambienteId: string) {
 // ─── RECEPCIÓN / BODEGA ──────────────────────────────────────
 
 export async function getRecepcionesBodega(proyectoId: string) {
-  await requireSession();
+  await requireProyecto(proyectoId);
   return prisma.recepcionBodega.findMany({
     where: { proyectoId },
     orderBy: { fechaRecepcion: "desc" },
@@ -78,7 +90,7 @@ export interface RecepcionData {
 }
 
 export async function crearRecepcion(proyectoId: string, data: RecepcionData) {
-  await requireSession();
+  await requireProyecto(proyectoId);
   try {
     const recepcion = await prisma.recepcionBodega.create({
       data: {
@@ -103,7 +115,7 @@ export async function crearRecepcion(proyectoId: string, data: RecepcionData) {
 }
 
 export async function eliminarRecepcion(proyectoId: string, recepcionId: string) {
-  await requireSession();
+  await requireProyecto(proyectoId);
   try {
     // Verificar que no tenga registros As-Built
     const count = await prisma.asBuiltRegistro.count({ where: { recepcionId } });
@@ -121,7 +133,7 @@ export async function eliminarRecepcion(proyectoId: string, recepcionId: string)
 // ─── AS-BUILT ────────────────────────────────────────────────
 
 export async function getAsBuiltPorAmbiente(proyectoId: string) {
-  await requireSession();
+  await requireProyecto(proyectoId);
   const ambientes = await prisma.ambienteProyecto.findMany({
     where: { proyectoId },
     orderBy: { nombre: "asc" },
@@ -159,7 +171,7 @@ export interface AsBuiltData {
 }
 
 export async function crearAsBuilt(proyectoId: string, data: AsBuiltData) {
-  await requireSession();
+  await requireProyecto(proyectoId);
   try {
     // Verificar stock disponible
     const recepcion = await prisma.recepcionBodega.findUnique({
@@ -199,7 +211,7 @@ export async function crearAsBuilt(proyectoId: string, data: AsBuiltData) {
 }
 
 export async function eliminarAsBuilt(proyectoId: string, registroId: string) {
-  await requireSession();
+  await requireProyecto(proyectoId);
   try {
     await prisma.asBuiltRegistro.delete({ where: { id: registroId } });
     revalidatePath(`/proyectos/${proyectoId}/inventario`);
@@ -225,8 +237,10 @@ export async function getMaterialesParaSelector() {
   });
 }
 
-export async function getProveedoresParaSelector(empresaId: string) {
-  await requireSession();
+export async function getProveedoresParaSelector() {
+  const session = await requireSession();
+  const empresaId = (session.user as { empresaId?: string }).empresaId;
+  if (!empresaId) return [];
   return prisma.proveedor.findMany({
     where: { empresaId, activo: true },
     orderBy: { razonSocial: "asc" },
