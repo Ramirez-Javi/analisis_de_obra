@@ -42,12 +42,14 @@ async function requireProyectoAccess(proyectoId: string) {
 // ─────────────────────────────────────────────
 export async function getMovimientos(proyectoId: string) {
   await requireAuth();
-  return prisma.movimientoFinanciero.findMany({
+  const rows = await prisma.movimientoFinanciero.findMany({
     where: { proyectoId },
     include: { proveedor: { select: { razonSocial: true } } },
     orderBy: { fecha: "asc" },
     take: 1000, // límite de seguridad
   });
+  // Decimal → number en el boundary Server/Client
+  return rows.map((m) => ({ ...m, monto: Number(m.monto) }));
 }
 
 // ─────────────────────────────────────────────

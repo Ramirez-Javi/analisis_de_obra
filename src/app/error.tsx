@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect } from "react";
+import * as Sentry from "@sentry/nextjs";
+import Link from "next/link";
 import { AlertTriangle, RefreshCw } from "lucide-react";
 
 interface ErrorPageProps {
@@ -14,8 +16,11 @@ interface ErrorPageProps {
  */
 export default function ErrorPage({ error, reset }: ErrorPageProps) {
   useEffect(() => {
-    // Loguear en consola en desarrollo; en producción iría a un servicio de observabilidad
-    console.error("[ErrorBoundary]", error);
+    // Capturar en Sentry con contexto de componente
+    Sentry.captureException(error, {
+      tags: { boundary: "global-error" },
+      extra: { digest: error.digest },
+    });
   }, [error]);
 
   return (
@@ -43,12 +48,12 @@ export default function ErrorPage({ error, reset }: ErrorPageProps) {
             <RefreshCw size={14} />
             Reintentar
           </button>
-          <a
+          <Link
             href="/"
             className="inline-flex items-center px-4 py-2.5 rounded-xl dark:bg-slate-800 bg-slate-200 dark:hover:bg-slate-700 hover:bg-slate-300 dark:text-slate-200 text-slate-700 text-sm font-medium transition-colors"
           >
             Ir al inicio
-          </a>
+          </Link>
         </div>
       </div>
     </div>

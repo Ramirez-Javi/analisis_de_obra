@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { withSentryConfig } from "@sentry/nextjs";
 
 const nextConfig: NextConfig = {
   /**
@@ -41,4 +42,25 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+export default withSentryConfig(nextConfig, {
+  // DSN del servidor (no expuesto al cliente)
+  org: process.env.SENTRY_ORG,
+  project: process.env.SENTRY_PROJECT,
+
+  // Subir source maps solo cuando hay auth token (no bloquea builds sin token)
+  authToken: process.env.SENTRY_AUTH_TOKEN,
+
+  // Ocultar los source maps del bundle público
+  sourcemaps: {
+    deleteSourcemapsAfterUpload: true,
+  },
+
+  // No mostrar logs de Sentry en build
+  silent: true,
+
+  // Deshabilitar telemetría interna de Sentry
+  telemetry: false,
+
+  // Elimina los uploads si no hay token (dev local)
+  disableLogger: true,
+});

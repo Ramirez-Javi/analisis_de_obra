@@ -53,7 +53,7 @@ model MaterialMaestro {
   codigo      String  @unique // Ej: "LAD-001"
   nombre      String
   descripcion String?
-  precioBase  Float   // Precio de referencia maestro
+  precioBase  Decimal // Precio de referencia maestro
   activo      Boolean @default(true)
 
   unidadMedidaId  String
@@ -248,7 +248,7 @@ model Proyecto {
 model TrabajoAdicional {
   id          String    @id @default(cuid())
   descripcion String
-  monto       Float
+  monto       Decimal
   fechaInicio DateTime?
   fechaFin    DateTime?
   aprobado    Boolean   @default(false)
@@ -369,7 +369,7 @@ model Insumo {
   nombre         String  // Nombre editable (copiado del material maestro)
   cantidad       Float   // Cantidad por unidad de rubro (copiada, editable)
   porcPerdida    Float   @default(0) // % → se aplica a cantidad
-  precioUnitario Float   // Precio editable (por defecto del maestro al copiar)
+  precioUnitario Decimal // Precio editable (por defecto del maestro al copiar)
   esPrecioCustom Boolean @default(false) // true si el usuario alteró el precio
   esManodeObra   Boolean @default(false)
   descripcionMO  String?
@@ -438,7 +438,7 @@ model ContratoManoObra {
   id                String         @id @default(cuid())
   descripcion       String
   jefeCuadrilla     String
-  montoPactado      Float          // Monto total del contrato
+  montoPactado      Decimal        // Monto total del contrato
   porcRetencion     Float          @default(0) // % de retención de garantía
   estado            EstadoContrato @default(ACTIVO)
   fechaInicio       DateTime?
@@ -491,7 +491,7 @@ model PersonalCuadrilla {
 /// Pagos realizados a un contrato
 model PagoContrato {
   id          String   @id @default(cuid())
-  monto       Float
+  monto       Decimal
   fecha       DateTime
   descripcion String?
   comprobante String?  // Ruta o número de comprobante
@@ -520,7 +520,7 @@ model CostoIndirecto {
   id          String              @id @default(cuid())
   descripcion String
   tipo        TipoCostoIndirecto
-  monto       Float
+  monto       Decimal
   proveedor   String?
   fecha       DateTime?
   comprobante String?
@@ -626,7 +626,7 @@ model AprobacionProyecto {
   fechaInicioContractual DateTime?
   fechaFinContractual    DateTime?
   plazoEnDias            Int?
-  montoContratoGs        Float?
+  montoContratoGs        Decimal?
 
   // Aprobación de Planos
   fechaAprobacionPlanos    DateTime?
@@ -938,7 +938,7 @@ model MovimientoFinanciero {
   tipo               TipoMovimiento
   concepto           String         // Descripción del movimiento
   beneficiario       String         // A quién se pagó / de quién se recibió
-  monto              Float
+  monto              Decimal
 
   // Comprobante
   tipoComprobante    TipoComprobante?
@@ -1044,8 +1044,8 @@ model FacturaProveedor {
   nroFactura       String
   fecha            DateTime
   concepto         String        // Ej: "15 bolsas de cemento"
-  monto            Float         // Monto total de la factura
-  montoPagado      Float         @default(0)
+  monto            Decimal       // Monto total de la factura
+  montoPagado      Decimal       @default(0)
   estado           EstadoFactura @default(PENDIENTE)
   fechaVencimiento DateTime?
   observacion      String?

@@ -5,14 +5,15 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
   TrendingUp, TrendingDown, Wallet, CircleDollarSign,
-  Plus, X, ChevronDown, Trash2, Landmark, CreditCard, BarChart2, Download, Search,
+  Plus, X, Trash2, Landmark, CreditCard, BarChart2, Download, Search,
 } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
 import { crearMovimiento, eliminarMovimiento } from "@/app/proyectos/[id]/financiero/actions";
 import type { NuevoMovimientoData } from "@/app/proyectos/[id]/financiero/actions";
 import type { MovimientoFinanciero, Proveedor } from "@prisma/client";
 
-type MovimientoConProveedor = MovimientoFinanciero & {
+type MovimientoConProveedor = Omit<MovimientoFinanciero, "monto"> & {
+  monto: number;
   proveedor: Pick<Proveedor, "razonSocial"> | null;
 };
 
@@ -336,11 +337,14 @@ export function FinancieroClient({ proyectoId, montoContrato, movimientos: initi
 
   // Calcular saldo acumulado por fila (sobre todos, sin filtro)
   const filasConSaldo = useMemo(() => {
-    let acc = 0;
-    return optimisticMovs.map((m) => {
-      acc += m.tipo === "INGRESO_CLIENTE" ? m.monto : -m.monto;
-      return { ...m, saldoAcumulado: acc };
-    });
+    return optimisticMovs.reduce<(typeof optimisticMovs[0] & { saldoAcumulado: number })[]>(
+      (acc, m) => {
+        const prev = acc.length > 0 ? acc[acc.length - 1].saldoAcumulado : 0;
+        const delta = m.tipo === "INGRESO_CLIENTE" ? m.monto : -m.monto;
+        return [...acc, { ...m, saldoAcumulado: prev + delta }];
+      },
+      []
+    );
   }, [optimisticMovs]);
 
   // Aplicar filtro y búsqueda

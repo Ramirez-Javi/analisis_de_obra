@@ -18,7 +18,7 @@ async function requireAuth() {
 // ─────────────────────────────────────────────
 export async function getProveedoresDelProyecto(proyectoId: string) {
   await requireAuth();
-  return prisma.proveedor.findMany({
+  const rows = await prisma.proveedor.findMany({
     where: { facturas: { some: { proyectoId } } },
     take: 200,
     include: {
@@ -30,6 +30,15 @@ export async function getProveedoresDelProyecto(proyectoId: string) {
     },
     orderBy: { razonSocial: "asc" },
   });
+  // Decimal → number en el boundary Server/Client
+  return rows.map((p) => ({
+    ...p,
+    facturas: p.facturas.map((f) => ({
+      ...f,
+      monto: Number(f.monto),
+      montoPagado: Number(f.montoPagado),
+    })),
+  }));
 }
 
 // ─────────────────────────────────────────────

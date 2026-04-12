@@ -64,7 +64,7 @@ export default async function FinancieroPage({
 
       <FinancieroClient
         proyectoId={id}
-        montoContrato={proyecto.aprobacion?.montoContratoGs ?? null}
+        montoContrato={proyecto.aprobacion?.montoContratoGs != null ? Number(proyecto.aprobacion.montoContratoGs) : null}
         movimientos={movimientos}
       />
     </main>

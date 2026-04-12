@@ -24,5 +24,18 @@ export default async function FichaProyectoPage({ params }: { params: Promise<{ 
   const { id } = await params;
   const proyecto = await getFicha(id);
   if (!proyecto) notFound();
-  return <FichaClient proyecto={proyecto} />;
+  // Decimal → number en el boundary Server/Client
+  const fichaData = {
+    ...proyecto,
+    aprobacion: proyecto.aprobacion
+      ? {
+          ...proyecto.aprobacion,
+          montoContratoGs:
+            proyecto.aprobacion.montoContratoGs != null
+              ? Number(proyecto.aprobacion.montoContratoGs)
+              : null,
+        }
+      : null,
+  };
+  return <FichaClient proyecto={fichaData} />;
 }

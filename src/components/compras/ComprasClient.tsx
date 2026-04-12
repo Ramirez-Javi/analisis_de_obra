@@ -11,7 +11,8 @@ import type { NuevaFacturaData } from "@/app/proyectos/[id]/compras/actions";
 import type { FacturaProveedor, Proveedor, EstadoFactura } from "@prisma/client";
 import Link from "next/link";
 
-type ProveedorConFacturas = Proveedor & { facturas: FacturaProveedor[] };
+type FacturaConMonto = Omit<FacturaProveedor, "monto" | "montoPagado"> & { monto: number; montoPagado: number };
+type ProveedorConFacturas = Proveedor & { facturas: FacturaConMonto[] };
 type ProveedorSelect = { id: string; razonSocial: string; ruc: string | null };
 
 interface Props {
@@ -50,7 +51,8 @@ function ModalCargarFactura({
   proveedoresDisponibles,
   proveedorPreseleccionado,
   onClose,
-  onCreada,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  onCreada: _onCreada,
 }: {
   proyectoId: string;
   proveedoresDisponibles: ProveedorSelect[];
