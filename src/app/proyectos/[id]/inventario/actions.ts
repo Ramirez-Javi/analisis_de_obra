@@ -29,6 +29,7 @@ export async function getAmbientes(proyectoId: string) {
   return prisma.ambienteProyecto.findMany({
     where: { proyectoId },
     orderBy: { nombre: "asc" },
+    take: 200,
     include: {
       _count: { select: { asBuiltRegistros: true } },
     },
@@ -67,6 +68,7 @@ export async function getRecepcionesBodega(proyectoId: string) {
   return prisma.recepcionBodega.findMany({
     where: { proyectoId },
     orderBy: { fechaRecepcion: "desc" },
+    take: 500,
     include: {
       material: { select: { id: true, codigo: true, nombre: true, unidadMedida: { select: { simbolo: true } } } },
       proveedor: { select: { id: true, razonSocial: true } },
@@ -137,6 +139,7 @@ export async function getAsBuiltPorAmbiente(proyectoId: string) {
   const ambientes = await prisma.ambienteProyecto.findMany({
     where: { proyectoId },
     orderBy: { nombre: "asc" },
+    take: 200,
     include: {
       asBuiltRegistros: {
         orderBy: { fechaInstalacion: "desc" },
@@ -228,6 +231,7 @@ export async function getMaterialesParaSelector() {
   return prisma.materialMaestro.findMany({
     where: { activo: true },
     orderBy: { nombre: "asc" },
+    take: 1000,
     select: {
       id: true,
       codigo: true,
@@ -244,6 +248,7 @@ export async function getProveedoresParaSelector() {
   return prisma.proveedor.findMany({
     where: { empresaId, activo: true },
     orderBy: { razonSocial: "asc" },
+    take: 500,
     select: { id: true, razonSocial: true },
   });
 }

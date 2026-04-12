@@ -2,6 +2,8 @@
 
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
+import { registroSchema } from "@/lib/schemas";
+import { audit } from "@/lib/audit";
 
 export type RegistroResultado =
   | { ok: true }
@@ -13,32 +15,14 @@ export async function registrarUsuario(data: {
   email: string;
   password: string;
 }): Promise<RegistroResultado> {
-  const email = data.email.trim().toLowerCase();
-  const nombre = data.nombre.trim();
-  const apellido = data.apellido.trim();
-  const { password } = data;
-
-  if (!email || !nombre || !password) {
-    return { ok: false, error: "Completá todos los campos obligatorios." };
+  // Validación completa con Zod
+  const parsed = registroSchema.safeParse(data);
+  if (!parsed.success) {
+    const firstError = parsed.error.issues[0];
+    return { ok: false, error: firstError.message };
   }
 
-  // Validar formato de email básico
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    return { ok: false, error: "El correo ingresado no es válido." };
-  }
-
-  if (password.length < 8) {
-    return { ok: false, error: "La contraseña debe tener al menos 8 caracteres." };
-  }
-  if (!/[A-Z]/.test(password)) {
-    return { ok: false, error: "La contraseña debe incluir al menos una letra mayúscula." };
-  }
-  if (!/[0-9]/.test(password)) {
-    return { ok: false, error: "La contraseña debe incluir al menos un número." };
-  }
-  if (!/[^A-Za-z0-9]/.test(password)) {
-    return { ok: false, error: "La contraseña debe incluir al menos un caracter especial." };
-  }
+  const { nombre, apellido, email, password } = parsed.data;
 
   // Verificar si ya existe un usuario con ese email
   const existente = await prisma.usuario.findUnique({ where: { email } });
@@ -68,5 +52,8 @@ export async function registrarUsuario(data: {
     },
   });
 
+  audit({ accion: "USUARIO_REGISTRO", entidad: "Usuario", userEmail: email, despues: { email, nombre, apellido, rol: "ADMIN" } }).catch(() => {});
+
   return { ok: true };
 }
+

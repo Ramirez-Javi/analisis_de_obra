@@ -20,10 +20,12 @@ export async function getProveedoresDelProyecto(proyectoId: string) {
   await requireAuth();
   return prisma.proveedor.findMany({
     where: { facturas: { some: { proyectoId } } },
+    take: 200,
     include: {
       facturas: {
         where: { proyectoId },
         orderBy: { fecha: "desc" },
+        take: 500,
       },
     },
     orderBy: { razonSocial: "asc" },
@@ -47,6 +49,7 @@ export async function getProveedoresParaSelect() {
   return prisma.proveedor.findMany({
     where: { activo: true, empresaId: empresaId ?? undefined },
     orderBy: { razonSocial: "asc" },
+    take: 500,
     select: { id: true, razonSocial: true, ruc: true },
   });
 }

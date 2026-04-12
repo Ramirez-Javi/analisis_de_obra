@@ -238,6 +238,8 @@ model Proyecto {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@index([empresaId])
+  @@index([estado])
   @@map("proyecto")
 }
 
@@ -353,6 +355,8 @@ model RubroProyecto {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@index([proyectoId])
+  @@index([rubroMaestroId])
   @@map("rubro_proyecto")
 }
 
@@ -376,6 +380,7 @@ model Insumo {
   rubroProyectoId String
   rubroProyecto   RubroProyecto @relation(fields: [rubroProyectoId], references: [id], onDelete: Cascade)
 
+  @@index([rubroProyectoId])
   @@map("insumo")
 }
 
@@ -399,6 +404,8 @@ model MicrocicloTarea {
 
   avances AvanceTarea[]
 
+  @@index([proyectoId])
+  @@index([rubroProyectoId])
   @@map("microciclo_tarea")
 }
 
@@ -450,6 +457,8 @@ model ContratoManoObra {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@index([proyectoId])
+  @@index([estado])
   @@map("contrato_mano_obra")
 }
 
@@ -669,6 +678,11 @@ model Usuario {
   rol       RolUsuario @default(USUARIO)
   activo    Boolean    @default(true)
 
+  // 2FA / TOTP
+  totpEnabled       Boolean @default(false)
+  totpSecret        String? // TOTP secret activo (base32)
+  totpPendingSecret String? // Secret en proceso de configuración (pre-confirmación)
+
   empresaId String?
   empresa   Empresa?   @relation(fields: [empresaId], references: [id])
 
@@ -679,6 +693,7 @@ model Usuario {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@index([empresaId])
   @@map("usuario")
 }
 
@@ -754,6 +769,8 @@ model RecepcionBodega {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@index([proyectoId])
+  @@index([materialId])
   @@map("recepcion_bodega")
 }
 
@@ -818,6 +835,8 @@ model BitacoraEntrada {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@index([proyectoId])
+  @@index([proyectoId, fecha])
   @@map("bitacora_entrada")
 }
 
@@ -860,6 +879,7 @@ model PermisoModulo {
   usuario   Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
 
   @@unique([usuarioId, modulo])
+  @@index([usuarioId])
   @@map("permiso_modulo")
 }
 
@@ -873,6 +893,8 @@ model SesionHistorial {
   usuarioId String
   usuario   Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
 
+  @@index([usuarioId])
+  @@index([fechaHora])
   @@map("sesion_historial")
 }
 
@@ -967,6 +989,9 @@ model MovimientoFinanciero {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@index([proyectoId])
+  @@index([proyectoId, fecha])
+  @@index([tipo])
   @@map("movimiento_financiero")
 }
 
@@ -1008,6 +1033,7 @@ model Proveedor {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@index([empresaId])
   @@map("proveedor")
 }
 
@@ -1037,5 +1063,60 @@ model FacturaProveedor {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@index([proyectoId])
+  @@index([proveedorId])
+  @@index([estado])
   @@map("factura_proveedor")
+}
+
+// ============================================================
+// AUDITORÍA — REGISTRO INMUTABLE DE ACCIONES CRÍTICAS
+// ============================================================
+
+enum AccionAudit {
+  USUARIO_REGISTRO
+  USUARIO_CREADO
+  USUARIO_ACTIVADO
+  USUARIO_DESACTIVADO
+  USUARIO_ELIMINADO
+  USUARIO_PASSWORD_CAMBIADO
+  USUARIO_2FA_HABILITADO
+  USUARIO_2FA_DESHABILITADO
+  PROYECTO_CREADO
+  PROYECTO_EDITADO
+  PROYECTO_ELIMINADO
+  MOVIMIENTO_CREADO
+  MOVIMIENTO_ELIMINADO
+}
+
+/// Registro inmutable de auditoría de seguridad
+/// Nunca se eliminan registros — solo INSERT
+model AuditLog {
+  id         String      @id @default(cuid())
+  timestamp  DateTime    @default(now())
+
+  // Quién realizó la acción
+  userId     String?     // id del usuario que actuó (null = acción anónima)
+  userEmail  String?     // email (desnormalizado para conservarlo si el usuario se elimina)
+
+  // Qué hizo
+  accion     AccionAudit
+  entidad    String      // "Usuario", "Proyecto", "MovimientoFinanciero", etc.
+  entidadId  String?     // id del registro afectado
+
+  // Datos del cambio (snapshot JSON)
+  antes      Json?       // Estado previo (para ediciones/bajas)
+  despues    Json?       // Estado posterior (para altas/ediciones)
+
+  // Contexto de red
+  ip         String?
+  userAgent  String?
+
+  exito      Boolean     @default(true)
+  error      String?     // Mensaje de error si exito = false
+
+  @@index([userId])
+  @@index([accion])
+  @@index([timestamp])
+  @@map("audit_log")
 }

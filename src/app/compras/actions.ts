@@ -3,6 +3,7 @@
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/session";
 import { revalidatePath } from "next/cache";
+import { logger } from "@/lib/logger";
 
 async function requireEmpresa() {
   const session = await getSession();
@@ -34,6 +35,7 @@ export async function getProveedoresGlobales() {
   return prisma.proveedor.findMany({
     where: { empresaId },
     orderBy: { razonSocial: "asc" },
+    take: 500, // límite de seguridad
     include: {
       _count: { select: { facturas: true } },
     },
@@ -68,7 +70,7 @@ export async function crearProveedorGlobal(data: ProveedorData) {
     revalidatePath("/compras");
     return { ok: true, proveedor };
   } catch (err) {
-    console.error("[compras-global] crearProveedor:", err);
+    logger.error("compras", "crearProveedor", { err: String(err) });
     return { ok: false, error: "Error al crear el proveedor" };
   }
 }
@@ -83,7 +85,7 @@ export async function actualizarProveedorGlobal(id: string, data: Partial<Provee
     revalidatePath("/compras");
     return { ok: true };
   } catch (err) {
-    console.error("[compras-global] actualizarProveedor:", err);
+    logger.error("compras", "actualizarProveedor", { err: String(err) });
     return { ok: false, error: "Error al actualizar el proveedor" };
   }
 }
@@ -106,7 +108,7 @@ export async function eliminarProveedorGlobal(id: string) {
     revalidatePath("/compras");
     return { ok: true };
   } catch (err) {
-    console.error("[compras-global] eliminarProveedor:", err);
+    logger.error("compras", "eliminarProveedor", { err: String(err) });
     return { ok: false, error: "Error al eliminar el proveedor" };
   }
 }
@@ -129,7 +131,7 @@ export async function toggleActivarProveedor(id: string) {
     revalidatePath("/compras");
     return { ok: true, nuevoEstado: !actual.activo };
   } catch (err) {
-    console.error("[compras-global] toggleActivar:", err);
+    logger.error("compras", "toggleActivarProveedor", { err: String(err) });
     return { ok: false, error: "Error al cambiar estado" };
   }
 }

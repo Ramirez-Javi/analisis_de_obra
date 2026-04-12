@@ -4,8 +4,12 @@ import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 import bcrypt from "bcryptjs";
+import { nuevoUsuarioSchema, passwordSchema } from "@/lib/schemas";
+import { generateTotpSecret, generateTotpQR, verifyTotpCode } from "@/lib/totp";
+import { encryptTotpSecret, decryptTotpSecret } from "@/lib/crypto";
+import { audit } from "@/lib/audit";
 
-const MAX_USUARIOS_ADICIONALES = 10; // Máximo usuarios no-admin
+const MAX_USUARIOS_ADICIONALES = 10;
 
 // ── Helper de autorización ──────────────────────────────────────────────────
 
@@ -15,29 +19,22 @@ async function requireAdmin() {
   if (!session?.user || role !== "ADMIN") {
     throw new Error("Solo los administradores pueden realizar esta acción.");
   }
-  // Resolve empresaId — JWT may be stale, always re-read from DB
   const userId = (session.user as { id?: string }).id!;
+  const userEmail = session.user.email ?? undefined;
   const userRecord = await prisma.usuario.findUnique({
     where: { id: userId },
     select: { empresaId: true },
   });
   const empresaId = userRecord?.empresaId ?? null;
-  return { session, empresaId, userId };
+  return { session, empresaId, userId, userEmail };
 }
 
 // ── Tipos públicos ──────────────────────────────────────────────────────────
 
 export type ModuloPermiso =
-  | "PROYECTO"
-  | "PRESUPUESTO"
-  | "CRONOGRAMA"
-  | "MANO_OBRA"
-  | "LOGISTICA"
-  | "REPORTES"
-  | "FINANCIERO"
-  | "COMPRAS"
-  | "INVENTARIO"
-  | "BITACORA";
+  | "PROYECTO" | "PRESUPUESTO" | "CRONOGRAMA" | "MANO_OBRA"
+  | "LOGISTICA" | "REPORTES" | "FINANCIERO" | "COMPRAS"
+  | "INVENTARIO" | "BITACORA";
 
 export interface NuevoUsuarioData {
   nombre: string;
@@ -56,36 +53,15 @@ export type AccionUsuarioResultado =
 export async function crearUsuario(
   data: NuevoUsuarioData
 ): Promise<AccionUsuarioResultado> {
-  const { empresaId } = await requireAdmin();
+  const { empresaId, userId, userEmail } = await requireAdmin();
 
-  const email = data.email.trim().toLowerCase();
-  const nombre = data.nombre.trim();
-  const apellido = data.apellido.trim();
-
-  if (!email || !nombre || !data.password) {
-    return { ok: false, error: "Completá todos los campos obligatorios." };
+  // Validación completa con Zod
+  const parsed = nuevoUsuarioSchema.safeParse(data);
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0].message };
   }
 
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    return { ok: false, error: "El correo no es válido." };
-  }
-
-  if (data.password.length < 8) {
-    return { ok: false, error: "La contraseña debe tener al menos 8 caracteres." };
-  }
-  if (!/[A-Z]/.test(data.password)) {
-    return { ok: false, error: "La contraseña debe incluir al menos una letra mayúscula." };
-  }
-  if (!/[0-9]/.test(data.password)) {
-    return { ok: false, error: "La contraseña debe incluir al menos un número." };
-  }
-  if (!/[^A-Za-z0-9]/.test(data.password)) {
-    return { ok: false, error: "La contraseña debe incluir al menos un caracter especial." };
-  }
-
-  if (data.permisos.length === 0) {
-    return { ok: false, error: "Asigná al menos un módulo al usuario." };
-  }
+  const { nombre, apellido, email, password, permisos } = parsed.data;
 
   // Límite de usuarios USUARIO scoped a esta empresa
   const cantidadUsuarios = await prisma.usuario.count({
@@ -103,7 +79,7 @@ export async function crearUsuario(
     return { ok: false, error: "Ya existe una cuenta con ese correo." };
   }
 
-  const hash = await bcrypt.hash(data.password, 12);
+  const hash = await bcrypt.hash(password, 12);
 
   await prisma.usuario.create({
     data: {
@@ -115,10 +91,12 @@ export async function crearUsuario(
       activo: true,
       empresaId: empresaId ?? undefined,
       permisos: {
-        create: data.permisos.map((modulo) => ({ modulo })),
+        create: permisos.map((modulo) => ({ modulo })),
       },
     },
   });
+
+  audit({ accion: "USUARIO_CREADO", entidad: "Usuario", userId, userEmail, despues: { email, nombre, apellido, permisos } }).catch(() => {});
 
   revalidatePath("/admin/usuarios");
   return { ok: true };
@@ -154,26 +132,20 @@ export async function cambiarPasswordUsuario(
   usuarioId: string,
   nuevaPassword: string
 ): Promise<AccionUsuarioResultado> {
-  await requireAdmin();
+  const { userId, userEmail } = await requireAdmin();
 
-  if (nuevaPassword.length < 8) {
-    return { ok: false, error: "La contraseña debe tener al menos 8 caracteres." };
-  }
-  if (!/[A-Z]/.test(nuevaPassword)) {
-    return { ok: false, error: "La contraseña debe incluir al menos una letra mayúscula." };
-  }
-  if (!/[0-9]/.test(nuevaPassword)) {
-    return { ok: false, error: "La contraseña debe incluir al menos un número." };
-  }
-  if (!/[^A-Za-z0-9]/.test(nuevaPassword)) {
-    return { ok: false, error: "La contraseña debe incluir al menos un caracter especial." };
+  const parsed = passwordSchema.safeParse(nuevaPassword);
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0].message };
   }
 
-  const hash = await bcrypt.hash(nuevaPassword, 12);
+  const hash = await bcrypt.hash(parsed.data, 12);
   await prisma.usuario.update({
     where: { id: usuarioId },
     data: { password: hash },
   });
+
+  audit({ accion: "USUARIO_PASSWORD_CAMBIADO", entidad: "Usuario", entidadId: usuarioId, userId, userEmail }).catch(() => {});
 
   revalidatePath("/admin/usuarios");
   return { ok: true };
@@ -185,12 +157,14 @@ export async function toggleActivarUsuario(
   usuarioId: string,
   activo: boolean
 ): Promise<AccionUsuarioResultado> {
-  await requireAdmin();
+  const { userId, userEmail } = await requireAdmin();
 
   await prisma.usuario.update({
     where: { id: usuarioId },
     data: { activo },
   });
+
+  audit({ accion: activo ? "USUARIO_ACTIVADO" : "USUARIO_DESACTIVADO", entidad: "Usuario", entidadId: usuarioId, userId, userEmail }).catch(() => {});
 
   revalidatePath("/admin/usuarios");
   return { ok: true };
@@ -201,11 +175,11 @@ export async function toggleActivarUsuario(
 export async function eliminarUsuario(
   usuarioId: string
 ): Promise<AccionUsuarioResultado> {
-  await requireAdmin();
+  const { userId, userEmail } = await requireAdmin();
 
   const usuario = await prisma.usuario.findUnique({
     where: { id: usuarioId },
-    select: { rol: true },
+    select: { rol: true, email: true, nombre: true, apellido: true },
   });
 
   if (usuario?.rol === "ADMIN") {
@@ -213,6 +187,9 @@ export async function eliminarUsuario(
   }
 
   await prisma.usuario.delete({ where: { id: usuarioId } });
+
+  audit({ accion: "USUARIO_ELIMINADO", entidad: "Usuario", entidadId: usuarioId, userId, userEmail, antes: { email: usuario?.email, nombre: usuario?.nombre, apellido: usuario?.apellido } }).catch(() => {});
+
   revalidatePath("/admin/usuarios");
   return { ok: true };
 }
@@ -226,6 +203,121 @@ export async function getHistorialSesiones(usuarioId: string) {
     where: { usuarioId },
     orderBy: { fechaHora: "desc" },
     take: 20,
-    select: { id: true, fechaHora: true, ipAddress: true },
+    select: { id: true, fechaHora: true, ipAddress: true, userAgent: true },
   });
+}
+
+// ── 2FA / TOTP ──────────────────────────────────────────────────────────────
+
+/**
+ * Paso 1: Genera un secreto TOTP pendiente y devuelve la imagen QR.
+ * El secreto queda en `totpPendingSecret` hasta que el usuario confirma con un código válido.
+ */
+export async function iniciarConfiguracion2FA(
+  usuarioId: string
+): Promise<{ ok: true; qrDataUrl: string; secret: string } | { ok: false; error: string }> {
+  await requireAdmin();
+
+  const usuario = await prisma.usuario.findUnique({
+    where: { id: usuarioId },
+    select: { email: true, totpEnabled: true },
+  });
+  if (!usuario) return { ok: false, error: "Usuario no encontrado." };
+  if (usuario.totpEnabled) return { ok: false, error: "El usuario ya tiene 2FA activo." };
+
+  const secret = generateTotpSecret();
+  // Cifrar antes de persistir en DB (AES-256-GCM si TOTP_ENCRYPTION_KEY está configurada)
+  const secretCifrado = encryptTotpSecret(secret);
+
+  await prisma.usuario.update({
+    where: { id: usuarioId },
+    data: { totpPendingSecret: secretCifrado },
+  });
+
+  // El QR usa el secreto en texto plano (base32) — nunca el cifrado
+  const qrDataUrl = await generateTotpQR(usuario.email, secret);
+
+  revalidatePath("/admin/usuarios");
+  return { ok: true, qrDataUrl, secret };
+}
+
+/**
+ * Paso 2: Verifica el código TOTP ingresado por el usuario contra el secreto pendiente.
+ * Si es válido, activa 2FA y limpia el secreto pendiente.
+ */
+export async function confirmar2FA(
+  usuarioId: string,
+  code: string
+): Promise<AccionUsuarioResultado> {
+  const { userId, userEmail } = await requireAdmin();
+
+  const usuario = await prisma.usuario.findUnique({
+    where: { id: usuarioId },
+    select: { totpPendingSecret: true, totpEnabled: true },
+  });
+  if (!usuario) return { ok: false, error: "Usuario no encontrado." };
+  if (!usuario.totpPendingSecret)
+    return { ok: false, error: "No hay configuración 2FA en curso. Iniciá el proceso nuevamente." };
+  if (usuario.totpEnabled) return { ok: false, error: "El usuario ya tiene 2FA activo." };
+
+  // Descifrar el secreto pendiente para verificar el código
+  const secretPlaintext = decryptTotpSecret(usuario.totpPendingSecret);
+  const valid = verifyTotpCode(secretPlaintext, code);
+  if (!valid) {
+    return { ok: false, error: "Código incorrecto. Verificá que la hora de tu dispositivo sea correcta." };
+  }
+
+  await prisma.usuario.update({
+    where: { id: usuarioId },
+    data: {
+      totpSecret: usuario.totpPendingSecret, // ya está cifrado
+      totpPendingSecret: null,
+      totpEnabled: true,
+    },
+  });
+
+  audit({ accion: "USUARIO_2FA_HABILITADO", entidad: "Usuario", entidadId: usuarioId, userId, userEmail }).catch(() => {});
+
+  revalidatePath("/admin/usuarios");
+  return { ok: true };
+}
+
+/**
+ * Deshabilita 2FA de un usuario y elimina los secretos almacenados.
+ */
+export async function deshabilitar2FA(usuarioId: string): Promise<AccionUsuarioResultado> {
+  const { userId, userEmail } = await requireAdmin();
+
+  await prisma.usuario.update({
+    where: { id: usuarioId },
+    data: {
+      totpEnabled: false,
+      totpSecret: null,
+      totpPendingSecret: null,
+    },
+  });
+
+  audit({ accion: "USUARIO_2FA_DESHABILITADO", entidad: "Usuario", entidadId: usuarioId, userId, userEmail }).catch(() => {});
+
+  revalidatePath("/admin/usuarios");
+  return { ok: true };
+}
+
+/**
+ * Devuelve el estado 2FA de un usuario (sin exponer el secreto).
+ */
+export async function get2FAStatus(
+  usuarioId: string
+): Promise<{ totpEnabled: boolean; hasPending: boolean }> {
+  await requireAdmin();
+
+  const usuario = await prisma.usuario.findUnique({
+    where: { id: usuarioId },
+    select: { totpEnabled: true, totpPendingSecret: true },
+  });
+
+  return {
+    totpEnabled: usuario?.totpEnabled ?? false,
+    hasPending: !!usuario?.totpPendingSecret,
+  };
 }

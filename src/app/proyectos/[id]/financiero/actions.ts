@@ -3,12 +3,38 @@
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/session";
 import { revalidatePath } from "next/cache";
+import { handlePrismaError } from "@/lib/prisma-errors";
 import type { MetodoPago, TipoMovimiento } from "@prisma/client";
+import { audit } from "@/lib/audit";
+import { crearMovimientoSchema } from "@/lib/schemas";
 
 async function requireAuth() {
   const session = await getSession();
   if (!session?.user) throw new Error("No autorizado");
   return session;
+}
+
+/**
+ * Verifica que el proyecto existe Y pertenece a la empresa del usuario activo.
+ * Previene IDOR (Insecure Direct Object Reference) en todas las operaciones financieras.
+ */
+async function requireProyectoAccess(proyectoId: string) {
+  const session = await requireAuth();
+  const empresaId = (session.user as { empresaId?: string }).empresaId;
+
+  const proyecto = await prisma.proyecto.findFirst({
+    where: {
+      id: proyectoId,
+      empresaId: empresaId ?? "", // string vacío garantiza que no coincide si no hay empresa
+    },
+    select: { id: true },
+  });
+
+  if (!proyecto) {
+    throw new Error("Proyecto no encontrado o sin acceso");
+  }
+
+  return { session, proyectoId: proyecto.id };
 }
 
 // ─────────────────────────────────────────────
@@ -20,6 +46,7 @@ export async function getMovimientos(proyectoId: string) {
     where: { proyectoId },
     include: { proveedor: { select: { razonSocial: true } } },
     orderBy: { fecha: "asc" },
+    take: 1000, // límite de seguridad
   });
 }
 
@@ -51,37 +78,61 @@ export interface NuevoMovimientoData {
 }
 
 export async function crearMovimiento(proyectoId: string, data: NuevoMovimientoData) {
-  const session = await requireAuth();
+  const { session } = await requireProyectoAccess(proyectoId);
+
+  // Validación Zod runtime — rechaza datos malformados antes de tocar la DB
+  const parsed = crearMovimientoSchema.safeParse(data);
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0].message };
+  }
+  const validated = parsed.data;
+
   try {
-    await prisma.movimientoFinanciero.create({
-      data: {
-        proyectoId,
-        fecha: new Date(data.fecha),
-        tipo: data.tipo,
-        concepto: data.concepto,
-        beneficiario: data.beneficiario,
-        monto: data.monto,
-        nroComprobante: data.nroComprobante || null,
-        autorizadoPor: data.autorizadoPor || null,
-        metodoPago: data.metodoPago,
-        otroMetodoDetalle: data.otroMetodoDetalle || null,
-        nroCheque: data.nroCheque || null,
-        bancoCheque: data.bancoCheque || null,
-        fechaEmisionCheque: data.fechaEmisionCheque ? new Date(data.fechaEmisionCheque) : null,
-        nroTransaccion: data.nroTransaccion || null,
-        bancoTransfer: data.bancoTransfer || null,
-        observacion: data.observacion || null,
-        proveedorId: data.proveedorId || null,
-        cuotaPagoId: data.cuotaPagoId || null,
-        contratoManoObraId: data.contratoManoObraId || null,
-        autorizadoPorUsuarioId: session.user.id,
-      },
-    });
+    const movimientoData = {
+      proyectoId,
+      fecha: new Date(validated.fecha),
+      tipo: validated.tipo,
+      concepto: validated.concepto,
+      beneficiario: validated.beneficiario,
+      monto: validated.monto,
+      nroComprobante: validated.nroComprobante || null,
+      autorizadoPor: validated.autorizadoPor || null,
+      metodoPago: validated.metodoPago,
+      otroMetodoDetalle: validated.otroMetodoDetalle || null,
+      nroCheque: validated.nroCheque || null,
+      bancoCheque: validated.bancoCheque || null,
+      fechaEmisionCheque: validated.fechaEmisionCheque ? new Date(validated.fechaEmisionCheque) : null,
+      nroTransaccion: validated.nroTransaccion || null,
+      bancoTransfer: validated.bancoTransfer || null,
+      observacion: validated.observacion || null,
+      proveedorId: validated.proveedorId || null,
+      cuotaPagoId: validated.cuotaPagoId || null,
+      contratoManoObraId: validated.contratoManoObraId || null,
+      autorizadoPorUsuarioId: session.user.id,
+    };
+
+    // Si hay cuotaPagoId, marcar la cuota como PAGADA en la misma transacción
+    if (validated.cuotaPagoId) {
+      await prisma.$transaction([
+        prisma.movimientoFinanciero.create({ data: movimientoData }),
+        prisma.cuotaPago.update({
+          where: { id: validated.cuotaPagoId },
+          data: { estado: "PAGADA" },
+        }),
+      ]);
+    } else {
+      await prisma.movimientoFinanciero.create({ data: movimientoData });
+    }
+
+    const actorId = (session.user as { id?: string }).id;
+    const actorEmail = (session.user as { email?: string }).email ?? undefined;
+    audit({ accion: "MOVIMIENTO_CREADO", entidad: "MovimientoFinanciero", userId: actorId, userEmail: actorEmail, despues: { proyectoId, tipo: validated.tipo, monto: validated.monto, concepto: validated.concepto } }).catch(() => {});
+
     revalidatePath(`/proyectos/${proyectoId}/financiero`);
     return { ok: true };
   } catch (err) {
-    console.error("[financiero] crearMovimiento:", err);
-    return { ok: false, error: "Error al registrar el movimiento" };
+    const { message } = handlePrismaError(err);
+    return { ok: false, error: message };
   }
 }
 
@@ -89,13 +140,22 @@ export async function crearMovimiento(proyectoId: string, data: NuevoMovimientoD
 // ELIMINAR movimiento
 // ─────────────────────────────────────────────
 export async function eliminarMovimiento(proyectoId: string, movimientoId: string) {
-  await requireAuth();
+  const { session } = await requireProyectoAccess(proyectoId);
   try {
-    await prisma.movimientoFinanciero.delete({ where: { id: movimientoId } });
+    // Bind explícito proyectoId → garantiza que solo se elimina el movimiento
+    // si pertenece a este proyecto (previene IDOR cross-project)
+    await prisma.movimientoFinanciero.delete({
+      where: { id: movimientoId, proyectoId },
+    });
+
+    const actorId = (session.user as { id?: string }).id;
+    const actorEmail = (session.user as { email?: string }).email ?? undefined;
+    audit({ accion: "MOVIMIENTO_ELIMINADO", entidad: "MovimientoFinanciero", entidadId: movimientoId, userId: actorId, userEmail: actorEmail }).catch(() => {});
+
     revalidatePath(`/proyectos/${proyectoId}/financiero`);
     return { ok: true };
   } catch (err) {
-    console.error("[financiero] eliminarMovimiento:", err);
-    return { ok: false, error: "Error al eliminar el movimiento" };
+    const { message } = handlePrismaError(err);
+    return { ok: false, error: message };
   }
 }

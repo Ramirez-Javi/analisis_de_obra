@@ -34,6 +34,7 @@ export async function getEntradasBitacora(proyectoId: string) {
   return prisma.bitacoraEntrada.findMany({
     where: { proyectoId },
     orderBy: { fecha: "desc" },
+    take: 500, // límite de seguridad
     include: {
       rubrosDelDia: { orderBy: { id: "asc" } },
       personalDelDia: { orderBy: { nombre: "asc" } },

@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useTransition, useMemo } from "react";
+import { useState, useTransition, useMemo, useOptimistic } from "react";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
   TrendingUp, TrendingDown, Wallet, CircleDollarSign,
-  Plus, X, ChevronDown, Trash2, Landmark, CreditCard, BarChart2,
+  Plus, X, ChevronDown, Trash2, Landmark, CreditCard, BarChart2, Download, Search,
 } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
 import { crearMovimiento, eliminarMovimiento } from "@/app/proyectos/[id]/financiero/actions";
@@ -98,9 +99,38 @@ function ModalNuevoMovimiento({
       const res = await crearMovimiento(proyectoId, form as NuevoMovimientoData);
       if (res.ok) {
         toast.success("Movimiento registrado");
+        // Construir movimiento optimista provisionario
+        onCreado({
+          id: `opt-${Date.now()}`,
+          proyectoId,
+          fecha: new Date(form.fecha ?? Date.now()),
+          tipo: (form.tipo ?? "EGRESO_OTRO") as MovimientoConProveedor["tipo"],
+          concepto: form.concepto ?? "",
+          beneficiario: form.beneficiario ?? "",
+          monto: Number(form.monto ?? 0),
+          metodoPago: (form.metodoPago ?? "EFECTIVO") as MovimientoConProveedor["metodoPago"],
+          nroComprobante: form.nroComprobante ?? null,
+          autorizadoPor: form.autorizadoPor ?? null,
+          realizadoPor: null,
+          codigoPersonal: null,
+          otroMetodoDetalle: form.otroMetodoDetalle ?? null,
+          nroCheque: form.nroCheque ?? null,
+          bancoCheque: form.bancoCheque ?? null,
+          fechaEmisionCheque: null,
+          fechaCobroCheque: null,
+          nroTransaccion: form.nroTransaccion ?? null,
+          bancoTransfer: form.bancoTransfer ?? null,
+          observacion: form.observacion ?? null,
+          tipoComprobante: null,
+          proveedorId: null,
+          cuotaPagoId: null,
+          contratoManoObraId: null,
+          autorizadoPorUsuarioId: null,
+          proveedor: null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        });
         onClose();
-        // Refrescar recargando la página (Server Component refetch via router)
-        window.location.reload();
       } else {
         toast.error(res.error);
       }
@@ -278,15 +308,21 @@ function BadgeMetodo({ metodo, detalle }: { metodo: string; detalle?: string | n
 
 // ─── Componente principal ────────────────────────────────────
 export function FinancieroClient({ proyectoId, montoContrato, movimientos: initial }: Props) {
-  const [movimientos, setMovimientos] = useState(initial);
+  const router = useRouter();
+  const [optimisticMovs, addOptimistic] = useOptimistic(
+    initial,
+    (state: MovimientoConProveedor[], nuevo: MovimientoConProveedor) => [...state, nuevo],
+  );
   const [showModal, setShowModal] = useState(false);
   const [tab, setTab] = useState<"libro" | "graficos">("libro");
+  const [filtroTipo, setFiltroTipo] = useState<string>("TODOS");
+  const [busqueda, setBusqueda] = useState("");
   const [, startTransition] = useTransition();
 
   // Calcular totales en runtime
   const { totalIngresado, totalEgresado, saldo, saldoPorCobrar } = useMemo(() => {
     let ing = 0, egr = 0;
-    movimientos.forEach((m) => {
+    optimisticMovs.forEach((m) => {
       if (m.tipo === "INGRESO_CLIENTE") ing += m.monto;
       else egr += m.monto;
     });
@@ -296,16 +332,26 @@ export function FinancieroClient({ proyectoId, montoContrato, movimientos: initi
       saldo: ing - egr,
       saldoPorCobrar: montoContrato !== null ? montoContrato - ing : null,
     };
-  }, [movimientos, montoContrato]);
+  }, [optimisticMovs, montoContrato]);
 
-  // Calcular saldo acumulado por fila
-  const filas = useMemo(() => {
+  // Calcular saldo acumulado por fila (sobre todos, sin filtro)
+  const filasConSaldo = useMemo(() => {
     let acc = 0;
-    return movimientos.map((m) => {
+    return optimisticMovs.map((m) => {
       acc += m.tipo === "INGRESO_CLIENTE" ? m.monto : -m.monto;
       return { ...m, saldoAcumulado: acc };
     });
-  }, [movimientos]);
+  }, [optimisticMovs]);
+
+  // Aplicar filtro y búsqueda
+  const filas = useMemo(() => {
+    return filasConSaldo.filter((m) => {
+      const pasaTipo = filtroTipo === "TODOS" || m.tipo === filtroTipo;
+      const q = busqueda.toLowerCase().trim();
+      const pasaBusqueda = !q || m.concepto.toLowerCase().includes(q) || m.beneficiario.toLowerCase().includes(q);
+      return pasaTipo && pasaBusqueda;
+    });
+  }, [filasConSaldo, filtroTipo, busqueda]);
 
   // Porcentajes sobre contrato
   const pctCobrado = montoContrato && montoContrato > 0
@@ -329,12 +375,35 @@ export function FinancieroClient({ proyectoId, montoContrato, movimientos: initi
     startTransition(async () => {
       const res = await eliminarMovimiento(proyectoId, id);
       if (res.ok) {
-        setMovimientos((prev) => prev.filter((m) => m.id !== id));
         toast.success("Movimiento eliminado");
+        router.refresh();
       } else {
         toast.error(res.error);
       }
     });
+  }
+
+  function exportCSV() {
+    const header = ["Fecha", "Tipo", "Concepto", "Beneficiario", "Medio de Pago", "Comprobante", "Ingreso (Gs.)", "Egreso (Gs.)", "Saldo Acumulado (Gs.)"];
+    const rows = filasConSaldo.map((m) => [
+      new Date(m.fecha).toLocaleDateString("es-PY"),
+      TIPOS_MOVIMIENTO.find((t) => t.value === m.tipo)?.label ?? m.tipo,
+      `"${m.concepto.replace(/"/g, '""')}"`,
+      `"${m.beneficiario.replace(/"/g, '""')}"`,
+      m.metodoPago,
+      m.nroComprobante ?? "",
+      m.tipo === "INGRESO_CLIENTE" ? m.monto : "",
+      m.tipo !== "INGRESO_CLIENTE" ? m.monto : "",
+      m.saldoAcumulado,
+    ]);
+    const csv = [header, ...rows].map((r) => r.join(",")).join("\n");
+    const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `financiero-${proyectoId}-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
   }
 
   return (
@@ -417,14 +486,62 @@ export function FinancieroClient({ proyectoId, montoContrato, movimientos: initi
             </button>
           ))}
           {tab === "libro" && (
-            <button
-              onClick={() => setShowModal(true)}
-              className="ml-auto mb-1 flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium transition-colors"
-            >
-              <Plus className="w-4 h-4" /> Registrar Movimiento
-            </button>
+            <div className="ml-auto mb-1 flex items-center gap-2">
+              <button
+                onClick={exportCSV}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                title="Exportar Libro Mayor a CSV"
+              >
+                <Download className="w-4 h-4" /> CSV
+              </button>
+              <button
+                onClick={() => setShowModal(true)}
+                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium transition-colors"
+              >
+                <Plus className="w-4 h-4" /> Registrar Movimiento
+              </button>
+            </div>
           )}
         </div>
+
+        {/* ── Filtros del Libro Mayor ── */}
+        {tab === "libro" && (
+          <div className="flex flex-wrap items-center gap-3 mb-4">
+            {/* Búsqueda */}
+            <div className="relative flex-1 min-w-[180px]">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Buscar concepto o beneficiario…"
+                value={busqueda}
+                onChange={(e) => setBusqueda(e.target.value)}
+                className="w-full pl-9 pr-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            {/* Filtro tipo */}
+            <select
+              value={filtroTipo}
+              onChange={(e) => setFiltroTipo(e.target.value)}
+              className="py-2 px-3 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="TODOS">Todos los tipos</option>
+              {TIPOS_MOVIMIENTO.map((t) => (
+                <option key={t.value} value={t.value}>{t.label}</option>
+              ))}
+            </select>
+            {(filtroTipo !== "TODOS" || busqueda) && (
+              <button
+                onClick={() => { setFiltroTipo("TODOS"); setBusqueda(""); }}
+                className="text-xs text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 underline"
+              >
+                Limpiar filtros
+              </button>
+            )}
+            {(filtroTipo !== "TODOS" || busqueda) && (
+              <span className="text-xs text-gray-400">{filas.length} resultado{filas.length !== 1 ? "s" : ""}</span>
+            )}
+          </div>
+        )}
 
         {/* ── TAB: Libro Mayor ── */}
         {tab === "libro" && (
@@ -565,7 +682,12 @@ export function FinancieroClient({ proyectoId, montoContrato, movimientos: initi
         <ModalNuevoMovimiento
           proyectoId={proyectoId}
           onClose={() => setShowModal(false)}
-          onCreado={() => {}}
+          onCreado={(m) => {
+            startTransition(() => {
+              addOptimistic(m);
+              router.refresh();
+            });
+          }}
         />
       )}
     </div>

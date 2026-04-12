@@ -18,6 +18,7 @@ export const authConfig: NextAuthConfig = {
         token.id = user.id;
         token.empresaId = (user as { empresaId?: string }).empresaId;
         token.permisos = (user as { permisos?: string[] }).permisos ?? [];
+        // activo y lastValidated los gestiona auth.ts (Node.js) en su jwt callback extendido
       }
       return token;
     },
@@ -29,6 +30,10 @@ export const authConfig: NextAuthConfig = {
           token.empresaId as string | undefined;
         (session.user as { permisos?: string[] }).permisos =
           (token.permisos as string[]) ?? [];
+        // Exponer activo en la sesión para que proxy.ts pueda verificarlo
+        // Default true para que sessiones legacy (sin activo en token) no se rompan
+        (session.user as { activo?: boolean }).activo =
+          (token.activo as boolean | undefined) ?? true;
       }
       return session;
     },

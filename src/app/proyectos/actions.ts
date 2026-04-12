@@ -3,6 +3,7 @@
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import type { NuevoProyectoFormValues } from "@/components/proyecto/types";
+import { audit } from "@/lib/audit";
 
 // Tipo de retorno explícito para manejo de errores en el cliente
 export type AccionResultado =
@@ -147,8 +148,16 @@ export async function crearProyecto(
       select: { id: true, codigo: true },
     });
 
+    const actorId = (session.user as { id?: string }).id;
+    const actorEmail = session.user.email ?? undefined;
+    audit({ accion: "PROYECTO_CREADO", entidad: "Proyecto", entidadId: proyecto.id, userId: actorId, userEmail: actorEmail, despues: { codigo, nombre: data.nombre.trim() } }).catch(() => {});
+
     return { ok: true, proyectoId: proyecto.id, codigo: proyecto.codigo };
   } catch (err) {
+    const session2 = await auth();
+    const actorId = (session2?.user as { id?: string })?.id;
+    const actorEmail = session2?.user?.email ?? undefined;
+    audit({ accion: "PROYECTO_CREADO", entidad: "Proyecto", userId: actorId, userEmail: actorEmail, exito: false, error: String(err) }).catch(() => {});
     console.error("[crearProyecto]", err);
     return {
       ok: false,
@@ -164,23 +173,33 @@ export async function eliminarProyecto(
   if (!session?.user) return { ok: false, error: "No autorizado." };
 
   try {
-    // Verify ownership — only allow deleting projects that belong to this user's empresa
+    // Row-level security: verificar ownership antes de eliminar
     const userId = (session.user as { id?: string }).id!;
     const userRecord = await prisma.usuario.findUnique({
       where: { id: userId },
       select: { empresaId: true },
     });
     const sessionEmpresaId = userRecord?.empresaId;
-    if (sessionEmpresaId) {
-      const proyecto = await prisma.proyecto.findFirst({
-        where: { id, empresaId: sessionEmpresaId },
-        select: { id: true },
-      });
-      if (!proyecto) return { ok: false, error: "Proyecto no encontrado." };
+
+    // Sin empresa asignada = sin acceso a proyectos
+    if (!sessionEmpresaId) {
+      return { ok: false, error: "No autorizado. El usuario no tiene empresa asignada." };
     }
 
-    await prisma.proyecto.delete({ where: { id } });
+    const proyecto = await prisma.proyecto.findFirst({
+      where: { id, empresaId: sessionEmpresaId },
+      select: { id: true },
+    });
+    if (!proyecto) return { ok: false, error: "Proyecto no encontrado." };
+
+    // Delete incluye empresaId como guard adicional de seguridad
+    await prisma.proyecto.delete({ where: { id, empresaId: sessionEmpresaId } });
     const { revalidatePath } = await import("next/cache");
+
+    const actorId = (session.user as { id?: string }).id;
+    const actorEmail = session.user.email ?? undefined;
+    audit({ accion: "PROYECTO_ELIMINADO", entidad: "Proyecto", entidadId: id, userId: actorId, userEmail: actorEmail }).catch(() => {});
+
     revalidatePath("/proyectos");
     return { ok: true };
   } catch (err) {
@@ -209,13 +228,16 @@ export async function editarProyecto(
     });
     const sessionEmpresaId = userRecord?.empresaId ?? null;
 
-    if (sessionEmpresaId) {
-      const existing = await prisma.proyecto.findFirst({
-        where: { id, empresaId: sessionEmpresaId },
-        select: { id: true },
-      });
-      if (!existing) return { ok: false, error: "Proyecto no encontrado." };
+    // Row-level security: sin empresa = sin acceso
+    if (!sessionEmpresaId) {
+      return { ok: false, error: "No autorizado. El usuario no tiene empresa asignada." };
     }
+
+    const proyectoOwned = await prisma.proyecto.findFirst({
+      where: { id, empresaId: sessionEmpresaId },
+      select: { id: true },
+    });
+    if (!proyectoOwned) return { ok: false, error: "Proyecto no encontrado." };
 
     // ── Empresa: upsert del registro de la propia empresa ──────────────
     let empresaId: string | null = null;
@@ -289,11 +311,11 @@ export async function editarProyecto(
       }));
 
     // ── Obtener el código actual ──
-    const existing = await prisma.proyecto.findUnique({
-      where: { id },
+    const proyectoActual = await prisma.proyecto.findUnique({
+      where: { id, empresaId: sessionEmpresaId },
       select: { codigo: true },
     });
-    if (!existing) return { ok: false, error: "Proyecto no encontrado." };
+    if (!proyectoActual) return { ok: false, error: "Proyecto no encontrado." };
 
     // ── Transacción: update proyecto + reemplazar relaciones ──
     await prisma.$transaction([
@@ -319,8 +341,15 @@ export async function editarProyecto(
       }),
     ]);
 
-    return { ok: true, proyectoId: id, codigo: existing.codigo };
+    const actorEmail = session.user.email ?? undefined;
+    audit({ accion: "PROYECTO_EDITADO", entidad: "Proyecto", entidadId: id, userId, userEmail: actorEmail, despues: { nombre: data.nombre.trim(), estado: data.estado } }).catch(() => {});
+
+    return { ok: true, proyectoId: id, codigo: proyectoActual.codigo };
   } catch (err) {
+    const session2 = await auth();
+    const actorId = (session2?.user as { id?: string })?.id;
+    const actorEmail = session2?.user?.email ?? undefined;
+    audit({ accion: "PROYECTO_EDITADO", entidad: "Proyecto", entidadId: id, userId: actorId, userEmail: actorEmail, exito: false, error: String(err) }).catch(() => {});
     console.error("[editarProyecto]", err);
     return {
       ok: false,
