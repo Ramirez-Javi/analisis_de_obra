@@ -79,7 +79,7 @@ export const proxy = auth(function (req) {
   const csp = buildCsp(nonce);
 
   // ── Rutas públicas ────────────────────────────────────────────────────────
-  const publicPaths = ["/login", "/registro", "/sin-acceso", "/api/debug-auth"];
+  const publicPaths = ["/login", "/registro", "/sin-acceso", "/api/debug-auth", "/campo", "/api/campo"];
   if (publicPaths.some((p) => pathname.startsWith(p))) {
     const res = NextResponse.next({
       request: { headers: new Headers({ ...Object.fromEntries(req.headers), "x-nonce": nonce }) },

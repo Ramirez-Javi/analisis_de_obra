@@ -229,6 +229,9 @@ model Proyecto {
 
     // Módulo 10: Bitácora de Obra
     bitacoraEntradas       BitacoraEntrada[]
+
+  // Campo access
+  campoAccesos           CampoAcceso[]
   formaPago            String?  // Ej: "Anticipo 30% + cuotas mensuales"
   objetoContrato       String?  // Descripción corta del objeto del contrato
   fechaContrato        DateTime?
@@ -867,6 +870,25 @@ model BitacoraPersonal {
   entrada       BitacoraEntrada @relation(fields: [entradaId], references: [id], onDelete: Cascade)
 
   @@map("bitacora_personal")
+}
+
+/// Acceso de campo por proyecto — fiscales y capataces
+/// No son usuarios del sistema, solo tienen acceso a la bitácora del proyecto que se les asigna
+model CampoAcceso {
+  id        String  @id @default(cuid())
+  nombre    String
+  apellido  String  @default("")
+  pinHash   String  // bcrypt hash del PIN de 4–6 dígitos
+  activo    Boolean @default(true)
+
+  proyectoId String
+  proyecto   Proyecto @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([proyectoId])
+  @@map("campo_acceso")
 }
 
 /// Control granular: qué módulos puede acceder cada usuario USUARIO

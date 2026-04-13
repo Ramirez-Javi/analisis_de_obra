@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ArrowLeft, Users } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { UsuariosManager } from "@/components/admin/UsuariosManager";
+import { AccesoOficinaCard } from "@/components/admin/AccesoOficinaCard";
 import { getSession } from "@/lib/session";
 import { redirect } from "next/navigation";
 import type { Metadata } from "next";
@@ -69,6 +70,10 @@ export default async function AdminUsuariosPage() {
             El administrador puede agregar hasta <strong className="dark:text-slate-300 text-slate-700">10 funcionarios</strong> con acceso
             restringido a módulos específicos del Centro de Mando.
           </p>
+        </div>
+
+        <div className="mb-8">
+          <AccesoOficinaCard />
         </div>
 
         <UsuariosManager usuarios={usuarios} />

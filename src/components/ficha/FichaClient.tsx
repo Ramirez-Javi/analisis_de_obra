@@ -5,9 +5,10 @@ import Link from "next/link";
 import {
   ArrowLeft, LayoutGrid, FileText, Building2, Users, HardHat,
   CalendarDays, BookOpen, CheckSquare, Pencil, Plus, Trash2,
-  Phone, Mail, Globe, User, Loader2, ClipboardList, FileImage,
+  Phone, Mail, Globe, User, Loader2, ClipboardList, FileImage, QrCode,
 } from "lucide-react";
 import { toast } from "sonner";
+import { AccesoCampoCard } from "./AccesoCampoCard";
 import {
   agregarMiembro, eliminarMiembro,
   agregarReunion, actualizarReunion, eliminarReunion,
@@ -62,6 +63,7 @@ const TABS = [
   { id: "reuniones",  label: "Reuniones",         icon: CalendarDays },
   { id: "bitacora",   label: "Bitácora",          icon: BookOpen   },
   { id: "aprobaciones", label: "Aprobaciones",    icon: CheckSquare },
+  { id: "campo",        label: "Acceso Campo",    icon: QrCode      },
 ] as const;
 type TabId = typeof TABS[number]["id"];
 
@@ -822,6 +824,7 @@ export function FichaClient({ proyecto }: { proyecto: ProyectoFicha }) {
         {activeTab === "reuniones"    && <TabReuniones proyectoId={proyecto.id} initial={proyecto.reuniones} />}
         {activeTab === "bitacora"     && <TabBitacora proyectoId={proyecto.id} initial={proyecto.anotaciones} />}
         {activeTab === "aprobaciones" && <TabAprobaciones proyectoId={proyecto.id} initial={proyecto.aprobacion} />}
+        {activeTab === "campo"         && <AccesoCampoCard proyectoId={proyecto.id} />}
       </main>
     </div>
   );

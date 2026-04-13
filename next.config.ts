@@ -2,6 +2,8 @@ import type { NextConfig } from "next";
 import { withSentryConfig } from "@sentry/nextjs";
 
 const nextConfig: NextConfig = {
+  output: "standalone",
+
   /**
    * Security headers estáticos — aplicados a todas las rutas.
    * La Content-Security-Policy dinámica (con nonce) la gestiona src/middleware.ts.

@@ -1,11 +1,16 @@
 {
   "name": "tekoinnova-cmd",
   "version": "0.1.0",
+  "main": "electron/main.cjs",
   "private": true,
   "scripts": {
     "postinstall": "prisma generate",
     "dev": "next dev",
-    "build": "next build",
+    "build": "node scripts/clean-next.mjs && next build",
+    "electron:prepare": "node scripts/prepare-electron.mjs && node scripts/generate-win-icon.mjs",
+    "electron:build": "npm run build && npm run electron:prepare && electron-builder",
+    "electron:build:win": "npm run build && npm run electron:prepare && electron-builder --win nsis",
+    "electron:start": "npm run build && npm run electron:prepare && electron .",
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
@@ -48,16 +53,64 @@
     "@types/react-dom": "^19",
     "@vitejs/plugin-react": "^6.0.1",
     "@vitest/coverage-v8": "^4.1.4",
+    "electron": "^37.2.6",
+    "electron-builder": "^26.0.12",
     "eslint": "^9",
     "eslint-config-next": "16.2.2",
     "husky": "^9.1.7",
     "jsdom": "^29.0.2",
     "lint-staged": "^16.4.0",
+    "png-to-ico": "^2.1.8",
     "prisma": "^7.6.0",
     "tailwindcss": "^4",
     "typescript": "^5",
     "vite-tsconfig-paths": "^6.1.1",
     "vitest": "^4.1.4"
+  },
+  "build": {
+    "appId": "com.tekoga.app",
+    "productName": "TEKOGA",
+    "artifactName": "TEKOGA Setup ${version}.${ext}",
+    "icon": "build/tekoga.ico",
+    "directories": {
+      "output": "release/tekoga-build"
+    },
+    "files": [
+      "electron/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "dist-electron/app",
+        "to": "app",
+        "filter": [
+          "**/*"
+        ]
+      },
+      {
+        "from": "resources/cloudflared.exe",
+        "to": "cloudflared.exe"
+      }
+    ],
+    "asar": true,
+    "win": {
+      "icon": "build/tekoga.ico",
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "TEKOGA"
+    }
   },
   "lint-staged": {
     "*.{ts,tsx}": "eslint --max-warnings=0"

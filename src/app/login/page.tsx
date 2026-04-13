@@ -56,6 +56,8 @@ function LoginForm() {
 
       // No requiere 2FA — completar login con NextAuth
       await completarLogin("");
+    } catch (err) {
+      setError(`Error de conexion: ${err instanceof Error ? err.message : String(err)}`);
     } finally {
       setLoading(false);
     }
@@ -96,7 +98,8 @@ function LoginForm() {
       return;
     }
 
-    router.push(callbackUrl);
+    const dest = callbackUrl && callbackUrl.startsWith("/") ? callbackUrl : "/";
+    router.push(dest);
     router.refresh();
   }
 
