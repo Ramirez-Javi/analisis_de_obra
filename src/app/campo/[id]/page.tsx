@@ -31,11 +31,11 @@ export default async function CampoProyectoPage({
   });
   if (!proyecto) notFound();
 
-  // Verificar que la empresa tiene al menos un usuario con PIN asignado
-  const tieneUsuariosConPin = await prisma.usuario.count({
-    where: { empresaId: proyecto.empresaId, pinHash: { not: null }, activo: true },
+  // Verificar que el proyecto tiene al menos un acceso de campo configurado
+  const tieneAccesoCampo = await prisma.campoAcceso.count({
+    where: { proyectoId: proyecto.id },
   });
-  if (tieneUsuariosConPin === 0) {
+  if (tieneAccesoCampo === 0) {
     return (
       <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center px-6 text-center">
         <p className="text-slate-400 text-sm max-w-xs">
