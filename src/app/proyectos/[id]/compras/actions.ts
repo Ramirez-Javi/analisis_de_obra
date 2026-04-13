@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/session";
 import { revalidatePath } from "next/cache";
 import type { EstadoFactura } from "@prisma/client";
+import { logger } from "@/lib/logger";
 
 async function requireAuth() {
   const session = await getSession();
@@ -94,7 +95,7 @@ export async function crearFactura(proyectoId: string, data: NuevaFacturaData) {
     revalidatePath(`/proyectos/${proyectoId}/compras`);
     return { ok: true };
   } catch (err) {
-    console.error("[compras] crearFactura:", err);
+    logger.error("compras", "crearFactura falló", { err });
     return { ok: false, error: "Error al cargar la factura" };
   }
 }
@@ -117,7 +118,7 @@ export async function actualizarEstadoFactura(
     revalidatePath(`/proyectos/${proyectoId}/compras`);
     return { ok: true };
   } catch (err) {
-    console.error("[compras] actualizarEstadoFactura:", err);
+    logger.error("compras", "actualizarEstadoFactura falló", { err });
     return { ok: false, error: "Error al actualizar la factura" };
   }
 }
@@ -129,7 +130,7 @@ export async function eliminarFactura(proyectoId: string, facturaId: string) {
     revalidatePath(`/proyectos/${proyectoId}/compras`);
     return { ok: true };
   } catch (err) {
-    console.error("[compras] eliminarFactura:", err);
+    logger.error("compras", "eliminarFactura falló", { err });
     return { ok: false, error: "Error al eliminar la factura" };
   }
 }

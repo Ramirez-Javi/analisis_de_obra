@@ -7,6 +7,7 @@ import { checkRateLimit, resetRateLimit } from "./rate-limit";
 import { loginSchema } from "./schemas";
 import { verifyTotpCode } from "./totp";
 import { decryptTotpSecret } from "./crypto";
+import { logger } from "./logger";
 
 const REVALIDATE_INTERVAL_MS = 5 * 60 * 1000; // 5 minutos
 
@@ -100,7 +101,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         } catch (err) {
           // Re-throw rate limit errors
           if (err instanceof Error && err.message.startsWith("Demasiados")) throw err;
-          console.error("[auth] authorize error:", err);
+          logger.error("auth", "authorize error", { err });
           return null;
         }
       },

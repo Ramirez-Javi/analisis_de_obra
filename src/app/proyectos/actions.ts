@@ -4,20 +4,12 @@ import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import type { NuevoProyectoFormValues } from "@/components/proyecto/types";
 import { audit } from "@/lib/audit";
+import { logger } from "@/lib/logger";
 
 // Tipo de retorno explícito para manejo de errores en el cliente
 export type AccionResultado =
   | { ok: true; proyectoId: string; codigo: string }
   | { ok: false; error: string };
-
-/** Genera un código único correlativo: PRY-2026-001 (solo como fallback interno) */
-async function generarCodigo(): Promise<string> {
-  const anio = new Date().getFullYear();
-  const count = await prisma.proyecto.count({
-    where: { codigo: { startsWith: `PRY-${anio}-` } },
-  });
-  return `PRY-${anio}-${String(count + 1).padStart(3, "0")}`;
-}
 
 // Helper to parse date string safely
 function parseDate(s: string): Date | null {
@@ -158,7 +150,7 @@ export async function crearProyecto(
     const actorId = (session2?.user as { id?: string })?.id;
     const actorEmail = session2?.user?.email ?? undefined;
     audit({ accion: "PROYECTO_CREADO", entidad: "Proyecto", userId: actorId, userEmail: actorEmail, exito: false, error: String(err) }).catch(() => {});
-    console.error("[crearProyecto]", err);
+    logger.error("proyectos", "crearProyecto falló", { err });
     return {
       ok: false,
       error: "Ocurrió un error al guardar el proyecto. Intenta nuevamente.",
@@ -203,7 +195,7 @@ export async function eliminarProyecto(
     revalidatePath("/proyectos");
     return { ok: true };
   } catch (err) {
-    console.error("[eliminarProyecto]", err);
+    logger.error("proyectos", "eliminarProyecto falló", { err });
     return { ok: false, error: "No se pudo eliminar el proyecto." };
   }
 }
@@ -350,7 +342,7 @@ export async function editarProyecto(
     const actorId = (session2?.user as { id?: string })?.id;
     const actorEmail = session2?.user?.email ?? undefined;
     audit({ accion: "PROYECTO_EDITADO", entidad: "Proyecto", entidadId: id, userId: actorId, userEmail: actorEmail, exito: false, error: String(err) }).catch(() => {});
-    console.error("[editarProyecto]", err);
+    logger.error("proyectos", "editarProyecto falló", { err });
     return {
       ok: false,
       error: "Ocurrió un error al actualizar el proyecto. Intenta nuevamente.",

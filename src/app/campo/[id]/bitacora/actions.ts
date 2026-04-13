@@ -3,8 +3,6 @@
 import { prisma } from "@/lib/prisma";
 import { getCampoSession } from "@/lib/campo-session";
 import { revalidatePath } from "next/cache";
-import { cookies } from "next/headers";
-import { verifyCampoToken, CAMPO_COOKIE } from "@/lib/campo-session";
 
 async function requireCampoSession(proyectoId: string) {
   const sesion = await getCampoSession();
@@ -50,8 +48,15 @@ export async function crearEntradaCampo(
     const sesion = await requireCampoSession(proyectoId);
 
     // Validar enlace de fotos si se provee
-    if (data.enlaceFotos && !data.enlaceFotos.startsWith("http")) {
-      return { ok: false, error: "El enlace de fotos debe comenzar con http/https" };
+    if (data.enlaceFotos) {
+      try {
+        const url = new URL(data.enlaceFotos.trim());
+        if (url.protocol !== "https:" && url.protocol !== "http:") {
+          return { ok: false, error: "El enlace de fotos debe ser una URL http/https válida" };
+        }
+      } catch {
+        return { ok: false, error: "El enlace de fotos no es una URL válida" };
+      }
     }
 
     await prisma.bitacoraEntrada.create({

@@ -1,10 +1,11 @@
 import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
+import { requireEnv } from "@/lib/env";
 
 // Prisma v7 requiere un driver adapter explícito para PostgreSQL
 function crearCliente() {
   const adapter = new PrismaPg({
-    connectionString: process.env.DATABASE_URL!,
+    connectionString: requireEnv("DATABASE_URL"),
     max: 1,                        // límite para serverless / PgBouncer
     connectionTimeoutMillis: 10000, // 10s timeout de conexión
     idleTimeoutMillis: 10000,       // liberar conexiones idle rápido

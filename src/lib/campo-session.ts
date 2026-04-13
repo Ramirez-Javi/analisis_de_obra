@@ -1,11 +1,12 @@
 import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
+import { requireEnv } from "@/lib/env";
 
 export const CAMPO_COOKIE = "campo_token";
 const CAMPO_MAX_AGE = 8 * 60 * 60; // 8 horas
 
 function getSecret(): Uint8Array {
-  const raw = process.env.AUTH_SECRET ?? "campo-dev-secret-change-in-production";
+  const raw = requireEnv("AUTH_SECRET");
   return new TextEncoder().encode(`campo|${raw}`);
 }
 

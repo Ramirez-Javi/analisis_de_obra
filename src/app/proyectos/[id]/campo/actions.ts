@@ -103,7 +103,7 @@ export async function actualizarPinCampoAcceso(
       return { ok: false, error: "Acceso no encontrado." };
     }
 
-    const pinHash = await bcrypt.hash(pin, 10);
+    const pinHash = await bcrypt.hash(pin, 12);
     await prisma.campoAcceso.update({ where: { id }, data: { pinHash } });
 
     revalidatePath(`/proyectos/${proyectoId}/ficha`);
