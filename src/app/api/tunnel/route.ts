@@ -2,6 +2,7 @@ import { type NextRequest, NextResponse } from "next/server";
 import { spawn, type ChildProcess } from "child_process";
 import path from "path";
 import fs from "fs";
+import { auth } from "@/lib/auth";
 
 // ─── Singleton de estado (persiste mientras el proceso del servidor esté vivo) ─
 
@@ -36,6 +37,10 @@ function stopTunnel() {
 // ─── GET: estado actual ───────────────────────────────────────────────────────
 
 export async function GET() {
+  const session = await auth();
+  if (!session?.user) {
+    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  }
   return NextResponse.json({
     status: tunnelStatus,
     url: tunnelUrl,
@@ -46,6 +51,11 @@ export async function GET() {
 // ─── POST: start / stop ───────────────────────────────────────────────────────
 
 export async function POST(req: NextRequest) {
+  const session = await auth();
+  if (!session?.user) {
+    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  }
+
   let body: { action?: string };
   try {
     body = await req.json();
