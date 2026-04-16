@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/session";
 import { getMovimientos } from "./actions";
 import { FinancieroClient } from "@/components/financiero/FinancieroClient";
-import { Landmark, ChevronLeft, LayoutDashboard } from "lucide-react";
+import { Landmark, ArrowLeft } from "lucide-react";
 
 export const metadata = { title: "Estado Financiero — TEKÓGA" };
 
@@ -22,6 +22,7 @@ export default async function FinancieroPage({
     select: {
       id: true,
       nombre: true,
+      codigo: true,
       aprobacion: { select: { montoContratoGs: true } },
     },
   });
@@ -30,43 +31,42 @@ export default async function FinancieroPage({
   const movimientos = await getMovimientos(id);
 
   return (
-    <main className="w-full max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-6">
-      {/* Navegación de retorno */}
-      <nav className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
-        <Link
-          href="/proyectos"
-          className="flex items-center gap-1 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
-        >
-          <LayoutDashboard className="w-3.5 h-3.5" />
-          Proyectos
-        </Link>
-        <ChevronLeft className="w-3.5 h-3.5 rotate-180" />
-        <Link
-          href={`/proyectos/${id}`}
-          className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors truncate max-w-[160px]"
-        >
-          {proyecto.nombre}
-        </Link>
-        <ChevronLeft className="w-3.5 h-3.5 rotate-180" />
-        <span className="text-gray-700 dark:text-gray-200 font-medium">Estado Financiero</span>
-      </nav>
-
-      {/* Encabezado */}
-      <div className="flex items-center gap-3">
-        <div className="rounded-xl bg-blue-600 p-2.5">
-          <Landmark className="w-5 h-5 text-white" />
-        </div>
-        <div>
-          <h1 className="text-xl font-bold text-gray-900 dark:text-white">Estado Financiero</h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400">{proyecto.nombre}</p>
+    <>
+      {/* Sticky nav header */}
+      <div className="sticky top-[52px] z-40 border-b dark:border-white/[0.06] border-slate-200 dark:bg-slate-950/90 bg-white/90 backdrop-blur-md">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex items-center gap-3">
+          <Link
+            href={`/proyectos/${id}`}
+            className="flex items-center gap-1.5 text-xs font-medium dark:text-slate-400 text-slate-500 dark:hover:text-teal-400 hover:text-teal-600 transition-colors duration-150"
+          >
+            <ArrowLeft size={15} />
+            Centro de Mando
+          </Link>
+          <div className="w-px h-3.5 dark:bg-white/10 bg-slate-200" />
+          <Link
+            href={`/proyectos/${id}`}
+            className="text-xs dark:text-slate-400 text-slate-500 dark:hover:text-teal-400 hover:text-teal-600 transition-colors duration-150"
+          >
+            {proyecto.codigo}
+          </Link>
+          <div className="w-px h-3.5 dark:bg-white/10 bg-slate-200" />
+          <div className="flex items-center gap-2">
+            <Landmark size={14} className="dark:text-blue-400 text-blue-600" />
+            <div className="leading-none">
+              <p className="text-sm font-semibold dark:text-slate-100 text-slate-800">Estado Financiero</p>
+              <p className="text-[11px] dark:text-slate-500 text-slate-400">{proyecto.nombre}</p>
+            </div>
+          </div>
         </div>
       </div>
 
-      <FinancieroClient
-        proyectoId={id}
-        montoContrato={proyecto.aprobacion?.montoContratoGs != null ? Number(proyecto.aprobacion.montoContratoGs) : null}
-        movimientos={movimientos}
-      />
-    </main>
+      <main className="w-full max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-6">
+        <FinancieroClient
+          proyectoId={id}
+          montoContrato={proyecto.aprobacion?.montoContratoGs != null ? Number(proyecto.aprobacion.montoContratoGs) : null}
+          movimientos={movimientos}
+        />
+      </main>
+    </>
   );
 }

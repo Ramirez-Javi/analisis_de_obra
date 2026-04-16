@@ -44,7 +44,7 @@ export async function getMovimientos(proyectoId: string) {
   await requireAuth();
   const rows = await prisma.movimientoFinanciero.findMany({
     where: { proyectoId },
-    include: { proveedor: { select: { razonSocial: true } } },
+    include: { proveedor: { select: { razonSocial: true, ruc: true } } },
     orderBy: { fecha: "asc" },
     take: 1000, // límite de seguridad
   });
@@ -63,12 +63,14 @@ export interface NuevoMovimientoData {
   monto: number;
   nroComprobante?: string;
   autorizadoPor?: string;
+  realizadoPor?: string;
   metodoPago: MetodoPago;
   otroMetodoDetalle?: string;
   // Cheque
   nroCheque?: string;
   bancoCheque?: string;
   fechaEmisionCheque?: string;
+  fechaCobroCheque?: string;
   // Transferencia/Giro
   nroTransaccion?: string;
   bancoTransfer?: string;
@@ -99,11 +101,13 @@ export async function crearMovimiento(proyectoId: string, data: NuevoMovimientoD
       monto: validated.monto,
       nroComprobante: validated.nroComprobante || null,
       autorizadoPor: validated.autorizadoPor || null,
+      realizadoPor: validated.realizadoPor || null,
       metodoPago: validated.metodoPago,
       otroMetodoDetalle: validated.otroMetodoDetalle || null,
       nroCheque: validated.nroCheque || null,
       bancoCheque: validated.bancoCheque || null,
       fechaEmisionCheque: validated.fechaEmisionCheque ? new Date(validated.fechaEmisionCheque) : null,
+      fechaCobroCheque: validated.fechaCobroCheque ? new Date(validated.fechaCobroCheque) : null,
       nroTransaccion: validated.nroTransaccion || null,
       bancoTransfer: validated.bancoTransfer || null,
       observacion: validated.observacion || null,
@@ -129,6 +133,54 @@ export async function crearMovimiento(proyectoId: string, data: NuevoMovimientoD
     const actorId = (session.user as { id?: string }).id;
     const actorEmail = (session.user as { email?: string }).email ?? undefined;
     audit({ accion: "MOVIMIENTO_CREADO", entidad: "MovimientoFinanciero", userId: actorId, userEmail: actorEmail, despues: { proyectoId, tipo: validated.tipo, monto: validated.monto, concepto: validated.concepto } }).catch(() => {});
+
+    revalidatePath(`/proyectos/${proyectoId}/financiero`);
+    return { ok: true };
+  } catch (err) {
+    const { message } = handlePrismaError(err);
+    return { ok: false, error: message };
+  }
+}
+
+// ─────────────────────────────────────────────
+// ACTUALIZAR movimiento
+// ─────────────────────────────────────────────
+export async function actualizarMovimiento(proyectoId: string, movimientoId: string, data: NuevoMovimientoData) {
+  const { session } = await requireProyectoAccess(proyectoId);
+
+  const parsed = crearMovimientoSchema.safeParse(data);
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0].message };
+  }
+  const validated = parsed.data;
+
+  try {
+    await prisma.movimientoFinanciero.update({
+      where: { id: movimientoId, proyectoId },
+      data: {
+        fecha: new Date(validated.fecha),
+        tipo: validated.tipo,
+        concepto: validated.concepto,
+        beneficiario: validated.beneficiario,
+        monto: validated.monto,
+        nroComprobante: validated.nroComprobante || null,
+        autorizadoPor: validated.autorizadoPor || null,
+        realizadoPor: validated.realizadoPor || null,
+        metodoPago: validated.metodoPago,
+        otroMetodoDetalle: validated.otroMetodoDetalle || null,
+        nroCheque: validated.nroCheque || null,
+        bancoCheque: validated.bancoCheque || null,
+        fechaEmisionCheque: validated.fechaEmisionCheque ? new Date(validated.fechaEmisionCheque) : null,
+        fechaCobroCheque: validated.fechaCobroCheque ? new Date(validated.fechaCobroCheque) : null,
+        nroTransaccion: validated.nroTransaccion || null,
+        bancoTransfer: validated.bancoTransfer || null,
+        observacion: validated.observacion || null,
+      },
+    });
+
+    const actorId = (session.user as { id?: string }).id;
+    const actorEmail = (session.user as { email?: string }).email ?? undefined;
+    audit({ accion: "MOVIMIENTO_EDITADO" as never, entidad: "MovimientoFinanciero", entidadId: movimientoId, userId: actorId, userEmail: actorEmail }).catch(() => {});
 
     revalidatePath(`/proyectos/${proyectoId}/financiero`);
     return { ok: true };

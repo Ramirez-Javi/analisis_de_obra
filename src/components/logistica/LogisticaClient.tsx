@@ -1,6 +1,8 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useTransition } from "react";
+import { toast } from "sonner";
+import { crearCostoIndirecto, eliminarCostoIndirecto } from "@/app/proyectos/[id]/logistica/actions";
 import Link from "next/link";
 import { ArrowLeft, Truck, Wrench, PackageOpen, Plus, Trash2 } from "lucide-react";
 import { AsignarProyectoWidget } from "@/components/shared/AsignarProyectoWidget";
@@ -56,11 +58,6 @@ const GASTOS_INICIALES: GastoLogistico[] = [
 ];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-
-let _seq = 0;
-function uid(prefix: string) {
-  return `${prefix}-${Date.now()}-${++_seq}`;
-}
 
 function fmtGs(n: number) {
   return Math.round(n).toLocaleString("es-PY");
@@ -188,11 +185,14 @@ function TabEquipos({
   equipos,
   setEquipos,
   rubrosMock,
+  proyectoId,
 }: {
   equipos: EquipoRubro[];
   setEquipos: React.Dispatch<React.SetStateAction<EquipoRubro[]>>;
   rubrosMock: { id: string; nombre: string }[];
+  proyectoId: string;
 }) {
+  const [isPending, startTransition] = useTransition();
   const rubroOpts = rubrosMock.map((r) => ({ value: r.id, label: r.nombre }));
   const unidadOpts = UNIDADES.map((u) => ({ value: u, label: u }));
 
@@ -203,21 +203,42 @@ function TabEquipos({
   };
 
   const add = () => {
-    setEquipos((prev) => [
-      ...prev,
-      {
-        id: uid("e"),
-        rubroId: rubrosMock[0]?.id ?? "r1",
-        descripcion: "",
-        unidad: "Días",
-        cantidad: 1,
-        costoUnitario: 0,
-      },
-    ]);
+    const rubroId = rubrosMock[0]?.id ?? "r1";
+    const rubro = rubrosMock[0]?.nombre ?? "General";
+    startTransition(async () => {
+      try {
+        const res = await crearCostoIndirecto(proyectoId, {
+          descripcion: "",
+          tipo: "ALQUILER_MAQUINARIA",
+          monto: 0,
+          proveedor: rubro,
+        });
+        setEquipos((prev) => [
+          ...prev,
+          {
+            id: res.id,
+            rubroId,
+            descripcion: "",
+            unidad: "Días",
+            cantidad: 1,
+            costoUnitario: 0,
+          },
+        ]);
+      } catch {
+        toast.error("Error al agregar equipo");
+      }
+    });
   };
 
   const remove = (id: string) => {
-    setEquipos((prev) => prev.filter((e) => e.id !== id));
+    startTransition(async () => {
+      try {
+        await eliminarCostoIndirecto(proyectoId, id);
+        setEquipos((prev) => prev.filter((e) => e.id !== id));
+      } catch {
+        toast.error("Error al eliminar equipo");
+      }
+    });
   };
 
   // Agrupar por rubro para mostrar subtotales
@@ -319,7 +340,8 @@ function TabEquipos({
                   <td className="px-2 py-2">
                     <button
                       onClick={() => remove(e.id)}
-                      className="p-1 rounded-md dark:text-red-400/50 text-red-400 dark:hover:bg-red-500/10 hover:bg-red-50 transition-colors"
+                      disabled={isPending}
+                      className="p-1 rounded-md dark:text-red-400/50 text-red-400 dark:hover:bg-red-500/10 hover:bg-red-50 transition-colors disabled:opacity-50"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
@@ -347,10 +369,11 @@ function TabEquipos({
       {/* Botón agregar */}
       <button
         onClick={add}
-        className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium dark:bg-yellow-500/10 bg-yellow-50 dark:text-yellow-400 text-yellow-600 dark:hover:bg-yellow-500/20 hover:bg-yellow-100 border dark:border-yellow-500/20 border-yellow-200 transition-colors"
+        disabled={isPending}
+        className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium dark:bg-yellow-500/10 bg-yellow-50 dark:text-yellow-400 text-yellow-600 dark:hover:bg-yellow-500/20 hover:bg-yellow-100 border dark:border-yellow-500/20 border-yellow-200 transition-colors disabled:opacity-50"
       >
         <Plus className="w-4 h-4" />
-        Asignar equipo
+        {isPending ? "Guardando…" : "Asignar equipo"}
       </button>
 
       {/* Resumen por rubro */}
@@ -393,10 +416,13 @@ function TabEquipos({
 function TabLogistica({
   gastos,
   setGastos,
+  proyectoId,
 }: {
   gastos: GastoLogistico[];
   setGastos: React.Dispatch<React.SetStateAction<GastoLogistico[]>>;
+  proyectoId: string;
 }) {
+  const [isPending, startTransition] = useTransition();
   const unidadOpts = UNIDADES.map((u) => ({ value: u, label: u }));
 
   const update = (id: string, field: keyof GastoLogistico, value: string | number) => {
@@ -406,14 +432,32 @@ function TabLogistica({
   };
 
   const add = () => {
-    setGastos((prev) => [
-      ...prev,
-      { id: uid("g"), descripcion: "", unidad: "Global", cantidad: 1, costoUnitario: 0 },
-    ]);
+    startTransition(async () => {
+      try {
+        const res = await crearCostoIndirecto(proyectoId, {
+          descripcion: "",
+          tipo: "OTRO",
+          monto: 0,
+        });
+        setGastos((prev) => [
+          ...prev,
+          { id: res.id, descripcion: "", unidad: "Global", cantidad: 1, costoUnitario: 0 },
+        ]);
+      } catch {
+        toast.error("Error al agregar gasto");
+      }
+    });
   };
 
   const remove = (id: string) => {
-    setGastos((prev) => prev.filter((g) => g.id !== id));
+    startTransition(async () => {
+      try {
+        await eliminarCostoIndirecto(proyectoId, id);
+        setGastos((prev) => prev.filter((g) => g.id !== id));
+      } catch {
+        toast.error("Error al eliminar gasto");
+      }
+    });
   };
 
   return (
@@ -492,7 +536,8 @@ function TabLogistica({
                   <td className="px-2 py-2">
                     <button
                       onClick={() => remove(g.id)}
-                      className="p-1 rounded-md dark:text-red-400/50 text-red-400 dark:hover:bg-red-500/10 hover:bg-red-50 transition-colors"
+                      disabled={isPending}
+                      className="p-1 rounded-md dark:text-red-400/50 text-red-400 dark:hover:bg-red-500/10 hover:bg-red-50 transition-colors disabled:opacity-50"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
@@ -519,10 +564,11 @@ function TabLogistica({
 
       <button
         onClick={add}
-        className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium dark:bg-yellow-500/10 bg-yellow-50 dark:text-yellow-400 text-yellow-600 dark:hover:bg-yellow-500/20 hover:bg-yellow-100 border dark:border-yellow-500/20 border-yellow-200 transition-colors"
+        disabled={isPending}
+        className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium dark:bg-yellow-500/10 bg-yellow-50 dark:text-yellow-400 text-yellow-600 dark:hover:bg-yellow-500/20 hover:bg-yellow-100 border dark:border-yellow-500/20 border-yellow-200 transition-colors disabled:opacity-50"
       >
         <Plus className="w-4 h-4" />
-        Agregar gasto logístico
+        {isPending ? "Guardando…" : "Agregar gasto logístico"}
       </button>
     </div>
   );
@@ -683,9 +729,9 @@ export function LogisticaClient({
 
         {/* Tab activo */}
         {activeTab === "equipos" ? (
-          <TabEquipos equipos={equipos} setEquipos={setEquipos} rubrosMock={rubrosMock} />
+          <TabEquipos equipos={equipos} setEquipos={setEquipos} rubrosMock={rubrosMock} proyectoId={proyecto?.id ?? ""} />
         ) : (
-          <TabLogistica gastos={gastos} setGastos={setGastos} />
+          <TabLogistica gastos={gastos} setGastos={setGastos} proyectoId={proyecto?.id ?? ""} />
         )}
       </div>
     </div>

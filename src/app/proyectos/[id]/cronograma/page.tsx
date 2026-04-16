@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { CronogramaClient } from "@/components/cronograma/CronogramaClient";
+import { cargarRubrosPresupuesto } from "@/app/actions/init-modulos";
 
 async function getProyecto(id: string) {
   return prisma.proyecto.findUnique({
@@ -24,7 +25,10 @@ export default async function CronogramaPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const proyecto = await getProyecto(id);
+  const [proyecto, initialRubros] = await Promise.all([
+    getProyecto(id),
+    cargarRubrosPresupuesto(id),
+  ]);
   if (!proyecto) notFound();
 
   return (
@@ -32,6 +36,7 @@ export default async function CronogramaPage({
       backHref={`/proyectos/${id}`}
       proyecto={proyecto}
       today={serverToday()}
+      initialRubros={initialRubros}
     />
   );
 }

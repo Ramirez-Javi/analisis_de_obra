@@ -252,6 +252,12 @@ export interface RubroRowProps {
   onDeleteInsumo: (instanceId: string, insumoId: string) => void;
   onAddInsumo: (instanceId: string) => void;
   onDeleteRubro: (instanceId: string) => void;
+  // drag-to-reorder
+  isDragOver?: boolean;
+  onDragStart?: () => void;
+  onDragOver?: (e: React.DragEvent) => void;
+  onDrop?: () => void;
+  onDragEnd?: () => void;
 }
 
 export function RubroRow({
@@ -265,12 +271,29 @@ export function RubroRow({
   onDeleteInsumo,
   onAddInsumo,
   onDeleteRubro,
+  isDragOver = false,
+  onDragStart,
+  onDragOver,
+  onDrop,
+  onDragEnd,
 }: RubroRowProps) {
   const pUnitario = calcPrecioUnitarioRubro(rubro);
   const subtotal = calcSubtotalRubro(rubro);
 
   return (
-    <div className="rounded-xl overflow-hidden border dark:border-white/[0.07] border-slate-200 shadow-sm dark:shadow-none transition-all duration-200">
+    <div
+      draggable
+      onDragStart={(e) => { e.dataTransfer.effectAllowed = "move"; onDragStart?.(); }}
+      onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; onDragOver?.(e); }}
+      onDrop={(e) => { e.preventDefault(); onDrop?.(); }}
+      onDragEnd={onDragEnd}
+      className={`rounded-xl overflow-hidden border shadow-sm dark:shadow-none transition-all duration-200
+        ${
+          isDragOver
+            ? "border-teal-500 dark:border-teal-500 scale-[1.01]"
+            : "dark:border-white/[0.07] border-slate-200"
+        }`}
+    >
       {/* Fila principal (nivel 1) */}
       <div
         className="flex items-center gap-3 px-4 py-3 cursor-pointer
@@ -279,7 +302,10 @@ export function RubroRow({
                    transition-colors duration-150 group"
       >
         {/* Grip */}
-        <div className="dark:text-slate-700 text-slate-300 shrink-0">
+        <div
+          className="dark:text-slate-500 text-slate-400 shrink-0 cursor-grab active:cursor-grabbing"
+          title="Arrastrar para reordenar"
+        >
           <GripVertical size={14} />
         </div>
 
@@ -289,10 +315,7 @@ export function RubroRow({
         </div>
 
         {/* Código + Nombre */}
-        <div
-          className="flex-1 min-w-0 flex items-center gap-2"
-          onClick={() => !rubro.rubroMaestroId && onToggle(rubro.instanceId)}
-        >
+        <div className="flex-1 min-w-0 flex items-center gap-2">
           {rubro.rubroMaestroId === "" ? (
             <input
               value={rubro.codigo}
@@ -308,21 +331,14 @@ export function RubroRow({
               {rubro.codigo}
             </span>
           )}
-          {rubro.rubroMaestroId === "" ? (
-            <input
-              value={rubro.nombre}
-              onClick={(e) => e.stopPropagation()}
-              onChange={(e) => onRubroChange?.(rubro.instanceId, "nombre", e.target.value)}
-              className="text-sm font-medium flex-1 min-w-0 bg-transparent border-b dark:border-white/20 border-slate-300 focus:outline-none dark:text-slate-100 text-slate-800"
-            />
-          ) : (
-            <span
-              className="text-sm font-medium dark:text-slate-100 text-slate-800 truncate"
-              onClick={() => onToggle(rubro.instanceId)}
-            >
-              {rubro.nombre}
-            </span>
-          )}
+          {/* Nombre: siempre editable (solo modifica estado local, no la DB) */}
+          <input
+            value={rubro.nombre}
+            onClick={(e) => e.stopPropagation()}
+            onChange={(e) => onRubroChange?.(rubro.instanceId, "nombre", e.target.value)}
+            title="Haz clic para editar el nombre"
+            className="text-sm font-medium flex-1 min-w-0 bg-transparent focus:border-b focus:dark:border-teal-500/60 focus:border-teal-400 focus:outline-none dark:text-slate-100 text-slate-800 cursor-text truncate dark:hover:bg-slate-700/30 hover:bg-slate-100/70 rounded px-1 py-0.5 transition-colors duration-100"
+          />
         </div>
 
         {/* Cantidad en obra */}

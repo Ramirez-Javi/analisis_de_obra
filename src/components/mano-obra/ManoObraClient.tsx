@@ -1,6 +1,9 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useTransition } from "react";
+import { toast } from "sonner";
+import { registrarPagoContrato, eliminarPagoContrato } from "@/app/proyectos/[id]/mano-obra/actions";
+import type { MetodoPago } from "@prisma/client";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -397,21 +400,37 @@ function TabFicha({
 
 // ─── Tab 2: Estado de Cuenta & Curvas ────────────────────────────────────────
 
+const METODOS_PAGO: { value: MetodoPago; label: string }[] = [
+  { value: "EFECTIVO", label: "Efectivo" },
+  { value: "CHEQUE", label: "Cheque" },
+  { value: "TRANSFERENCIA", label: "Transferencia" },
+  { value: "GIRO", label: "Giro" },
+  { value: "OTRO", label: "Otro" },
+];
+
 function TabEstadoCuenta({
   contratista,
   pagos,
   onAddPago,
   onRemovePago,
+  proyectoId,
+  contratoId,
+  jefeCuadrilla,
 }: {
   contratista: Contratista;
   pagos: PagoRegistro[];
   onAddPago: (p: PagoRegistro) => void;
   onRemovePago: (id: string) => void;
+  proyectoId: string;
+  contratoId: string;
+  jefeCuadrilla: string;
 }) {
+  const [isPending, startTransition] = useTransition();
   const [form, setForm] = useState({
     fecha: "",
     monto: "",
     porcentajeAvance: "",
+    metodoPago: "EFECTIVO" as MetodoPago,
   });
 
   // Acumular pagos para curva
@@ -443,14 +462,28 @@ function TabEstadoCuenta({
     const pctPago = contratista.montoPactado > 0
       ? parseFloat(((monto / contratista.montoPactado) * 100).toFixed(2))
       : 0;
-    onAddPago({
-      id: uid("p"),
-      fecha: form.fecha,
-      monto,
-      porcentajePago: pctPago,
-      porcentajeAvance: Number(form.porcentajeAvance),
+    const optimisticId = uid("p");
+    startTransition(async () => {
+      try {
+        const res = await registrarPagoContrato(proyectoId, contratoId, jefeCuadrilla, {
+          fecha: form.fecha,
+          monto,
+          metodoPago: form.metodoPago,
+        });
+        onAddPago({
+          id: res.id,
+          fecha: form.fecha,
+          monto,
+          porcentajePago: pctPago,
+          porcentajeAvance: Number(form.porcentajeAvance),
+        });
+        toast.success("Pago registrado en Libro Mayor");
+      } catch {
+        toast.error("Error al registrar el pago");
+      }
     });
-    setForm({ fecha: "", monto: "", porcentajeAvance: "" });
+    setForm({ fecha: "", monto: "", porcentajeAvance: "", metodoPago: "EFECTIVO" });
+    void optimisticId;
   };
 
   return (
@@ -591,7 +624,7 @@ function TabEstadoCuenta({
           <p className="text-[11px] uppercase tracking-wider dark:text-slate-500 text-slate-400 font-semibold mb-3">
             Registrar nuevo pago
           </p>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
             <div>
               <label className="block text-[10px] dark:text-slate-500 text-slate-400 mb-1">Fecha</label>
               <input
@@ -624,13 +657,26 @@ function TabEstadoCuenta({
                 onChange={(e) => setForm({ ...form, porcentajeAvance: e.target.value })}
               />
             </div>
+            <div>
+              <label className="block text-[10px] dark:text-slate-500 text-slate-400 mb-1">Método de pago</label>
+              <select
+                className="w-full rounded-lg px-2.5 py-1.5 text-xs dark:bg-slate-800 bg-slate-50 dark:border-white/[0.08] border-slate-200 border dark:text-slate-100 text-slate-900 focus:outline-none focus:ring-1 focus:ring-orange-500/40"
+                value={form.metodoPago}
+                onChange={(e) => setForm({ ...form, metodoPago: e.target.value as MetodoPago })}
+              >
+                {METODOS_PAGO.map((m) => (
+                  <option key={m.value} value={m.value}>{m.label}</option>
+                ))}
+              </select>
+            </div>
             <div className="flex items-end">
               <button
                 onClick={handleAdd}
-                className="w-full flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium dark:bg-orange-500/10 bg-orange-50 dark:text-orange-400 text-orange-600 dark:hover:bg-orange-500/20 hover:bg-orange-100 border dark:border-orange-500/20 border-orange-200 transition-colors"
+                disabled={isPending}
+                className="w-full flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium dark:bg-orange-500/10 bg-orange-50 dark:text-orange-400 text-orange-600 dark:hover:bg-orange-500/20 hover:bg-orange-100 border dark:border-orange-500/20 border-orange-200 transition-colors disabled:opacity-50"
               >
                 <Plus className="w-3.5 h-3.5" />
-                Agregar pago
+                {isPending ? "Guardando…" : "Agregar pago"}
               </button>
             </div>
           </div>
@@ -682,8 +728,18 @@ function TabEstadoCuenta({
                   </td>
                   <td className="px-2 py-2.5">
                     <button
-                      onClick={() => onRemovePago(p.id)}
-                      className="p-1 rounded-md dark:text-red-400/50 text-red-400 dark:hover:bg-red-500/10 hover:bg-red-50 transition-colors"
+                      onClick={() => {
+                        startTransition(async () => {
+                          try {
+                            await eliminarPagoContrato(proyectoId, p.id);
+                            onRemovePago(p.id);
+                          } catch {
+                            toast.error("Error al eliminar el pago");
+                          }
+                        });
+                      }}
+                      disabled={isPending}
+                      className="p-1 rounded-md dark:text-red-400/50 text-red-400 dark:hover:bg-red-500/10 hover:bg-red-50 transition-colors disabled:opacity-50"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
@@ -872,9 +928,12 @@ function ContratistaCard({
     : 0;
 
   return (
-    <button
+    <div
+      role="button"
+      tabIndex={0}
       onClick={onClick}
-      className="w-full text-left rounded-xl border dark:border-white/[0.06] border-slate-200 dark:bg-slate-900/40 bg-white p-4 hover:dark:bg-slate-800/60 hover:bg-slate-50 transition-colors group"
+      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onClick(); }}
+      className="w-full text-left rounded-xl border dark:border-white/[0.06] border-slate-200 dark:bg-slate-900/40 bg-white p-4 hover:dark:bg-slate-800/60 hover:bg-slate-50 transition-colors group cursor-pointer"
     >
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-3">
@@ -933,7 +992,7 @@ function ContratistaCard({
           <span>Total: Gs. {fmtGs(contratista.montoPactado)}</span>
         </div>
       </div>
-    </button>
+    </div>
   );
 }
 
@@ -1072,6 +1131,9 @@ export function ManoObraClient({
               pagos={pagos}
               onAddPago={(p) => addPago(selected.id, p)}
               onRemovePago={(id) => removePago(selected.id, id)}
+              proyectoId={proyecto?.id ?? ""}
+              contratoId={selected.id}
+              jefeCuadrilla={selected.nombre}
             />
           )}
           {activeTab === "bitacora" && (

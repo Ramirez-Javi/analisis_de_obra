@@ -6,16 +6,17 @@ import { toast } from "sonner";
 import {
   TrendingUp, TrendingDown, Wallet, CircleDollarSign,
   Plus, X, Trash2, Landmark, CreditCard, BarChart2, Download, Search, FileText,
+  Eye, Printer, Pencil,
 } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
 import { getEmpresaConfig, openBrandedPrintWindow } from "@/lib/reportHeader";
-import { crearMovimiento, eliminarMovimiento } from "@/app/proyectos/[id]/financiero/actions";
+import { crearMovimiento, eliminarMovimiento, actualizarMovimiento } from "@/app/proyectos/[id]/financiero/actions";
 import type { NuevoMovimientoData } from "@/app/proyectos/[id]/financiero/actions";
 import type { MovimientoFinanciero, Proveedor } from "@prisma/client";
 
 type MovimientoConProveedor = Omit<MovimientoFinanciero, "monto"> & {
   monto: number;
-  proveedor: Pick<Proveedor, "razonSocial"> | null;
+  proveedor: Pick<Proveedor, "razonSocial" | "ruc"> | null;
 };
 
 interface Props {
@@ -113,7 +114,7 @@ function ModalNuevoMovimiento({
           metodoPago: (form.metodoPago ?? "EFECTIVO") as MovimientoConProveedor["metodoPago"],
           nroComprobante: form.nroComprobante ?? null,
           autorizadoPor: form.autorizadoPor ?? null,
-          realizadoPor: null,
+          realizadoPor: form.realizadoPor ?? null,
           codigoPersonal: null,
           otroMetodoDetalle: form.otroMetodoDetalle ?? null,
           nroCheque: form.nroCheque ?? null,
@@ -204,6 +205,14 @@ function ModalNuevoMovimiento({
             </div>
           </div>
 
+          {/* Realizado por */}
+          <div>
+            <label className="block text-xs text-gray-500 mb-1">Realizado por (quien ejecutó el pago)</label>
+            <input type="text" value={form.realizadoPor ?? ""} onChange={(e) => set("realizadoPor", e.target.value)}
+              placeholder="Ej: Carlos Rodríguez — Tesorero"
+              className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white px-3 py-2 text-sm" />
+          </div>
+
           {/* Método de Pago */}
           <div>
             <label className="block text-xs text-gray-500 mb-1">Medio de Pago *</label>
@@ -232,6 +241,11 @@ function ModalNuevoMovimiento({
               <div>
                 <label className="block text-xs text-gray-500 mb-1">Fecha de Emisión del Cheque</label>
                 <input type="date" value={form.fechaEmisionCheque ?? ""} onChange={(e) => set("fechaEmisionCheque", e.target.value)}
+                  className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white px-3 py-2 text-sm" />
+              </div>
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">Fecha de Cobro del Cheque</label>
+                <input type="date" value={form.fechaCobroCheque ?? ""} onChange={(e) => set("fechaCobroCheque", e.target.value)}
                   className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white px-3 py-2 text-sm" />
               </div>
             </div>
@@ -288,6 +302,433 @@ function ModalNuevoMovimiento({
   );
 }
 
+// ─── Modal Editar Movimiento ────────────────────────────────
+function ModalEditarMovimiento({
+  m, onClose, onActualizado, proyectoId,
+}: {
+  m: MovimientoConProveedor;
+  onClose: () => void;
+  onActualizado: () => void;
+  proyectoId: string;
+}) {
+  const [pending, startTransition] = useTransition();
+  const toDateInput = (d: Date | string | null) =>
+    d ? new Date(d).toISOString().split("T")[0] : "";
+  const [form, setForm] = useState<Partial<NuevoMovimientoData> & { tipo: string; metodoPago: string }>({
+    tipo: m.tipo,
+    metodoPago: m.metodoPago,
+    fecha: toDateInput(m.fecha),
+    concepto: m.concepto,
+    beneficiario: m.beneficiario,
+    monto: m.monto,
+    nroComprobante: m.nroComprobante ?? "",
+    autorizadoPor: m.autorizadoPor ?? "",
+    realizadoPor: m.realizadoPor ?? "",
+    otroMetodoDetalle: m.otroMetodoDetalle ?? "",
+    nroCheque: m.nroCheque ?? "",
+    bancoCheque: m.bancoCheque ?? "",
+    fechaEmisionCheque: toDateInput(m.fechaEmisionCheque),
+    fechaCobroCheque: toDateInput(m.fechaCobroCheque),
+    nroTransaccion: m.nroTransaccion ?? "",
+    bancoTransfer: m.bancoTransfer ?? "",
+    observacion: m.observacion ?? "",
+  });
+  const set = (k: string, v: string | number) => setForm((p) => ({ ...p, [k]: v }));
+
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!form.concepto || !form.beneficiario || !form.monto) {
+      toast.error("Completá concepto, beneficiario y monto");
+      return;
+    }
+    startTransition(async () => {
+      const res = await actualizarMovimiento(proyectoId, m.id, form as NuevoMovimientoData);
+      if (res.ok) {
+        toast.success("Movimiento actualizado");
+        onActualizado();
+        onClose();
+      } else {
+        toast.error(res.error);
+      }
+    });
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+      <div className="w-full max-w-xl bg-white dark:bg-gray-900 rounded-2xl shadow-2xl overflow-y-auto max-h-[90vh]">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+          <h2 className="font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+            <Pencil className="w-4 h-4" /> Editar Movimiento
+          </h2>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          <div>
+            <label className="block text-xs text-gray-500 mb-1">Tipo *</label>
+            <select value={form.tipo ?? "EGRESO_OTRO"} onChange={(e) => set("tipo", e.target.value)}
+              className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white px-3 py-2 text-sm">
+              {TIPOS_MOVIMIENTO.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs text-gray-500 mb-1">Fecha *</label>
+            <input type="date" value={form.fecha ?? ""} onChange={(e) => set("fecha", e.target.value)}
+              className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white px-3 py-2 text-sm" required />
+          </div>
+          <div>
+            <label className="block text-xs text-gray-500 mb-1">Concepto *</label>
+            <input type="text" value={form.concepto ?? ""} onChange={(e) => set("concepto", e.target.value)}
+              className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white px-3 py-2 text-sm" required />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">Beneficiario *</label>
+              <input type="text" value={form.beneficiario ?? ""} onChange={(e) => set("beneficiario", e.target.value)}
+                className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white px-3 py-2 text-sm" required />
+            </div>
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">Monto (Gs.) *</label>
+              <input type="number" min={0} step="1" value={form.monto ?? ""} onChange={(e) => set("monto", parseFloat(e.target.value))}
+                className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white px-3 py-2 text-sm" required />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">N° Comprobante</label>
+              <input type="text" value={form.nroComprobante ?? ""} onChange={(e) => set("nroComprobante", e.target.value)}
+                className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white px-3 py-2 text-sm" />
+            </div>
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">Autorizó el pago</label>
+              <input type="text" value={form.autorizadoPor ?? ""} onChange={(e) => set("autorizadoPor", e.target.value)}
+                className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white px-3 py-2 text-sm" />
+            </div>
+          </div>
+          <div>
+            <label className="block text-xs text-gray-500 mb-1">Realizado por</label>
+            <input type="text" value={form.realizadoPor ?? ""} onChange={(e) => set("realizadoPor", e.target.value)}
+              className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white px-3 py-2 text-sm" />
+          </div>
+          <div>
+            <label className="block text-xs text-gray-500 mb-1">Medio de Pago *</label>
+            <select value={form.metodoPago} onChange={(e) => set("metodoPago", e.target.value)}
+              className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white px-3 py-2 text-sm">
+              {METODOS.map((mt) => <option key={mt.value} value={mt.value}>{mt.label}</option>)}
+            </select>
+          </div>
+          {form.metodoPago === "CHEQUE" && (
+            <div className="rounded-lg border border-yellow-300 dark:border-yellow-700 bg-yellow-50 dark:bg-yellow-900/20 p-4 space-y-3">
+              <p className="text-xs font-medium text-yellow-700 dark:text-yellow-400">Datos del Cheque</p>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1">Banco</label>
+                  <input type="text" value={form.bancoCheque ?? ""} onChange={(e) => set("bancoCheque", e.target.value)}
+                    className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white px-3 py-2 text-sm" />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1">N° de Cheque</label>
+                  <input type="text" value={form.nroCheque ?? ""} onChange={(e) => set("nroCheque", e.target.value)}
+                    className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white px-3 py-2 text-sm" />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1">Fecha de Emisión</label>
+                  <input type="date" value={form.fechaEmisionCheque ?? ""} onChange={(e) => set("fechaEmisionCheque", e.target.value)}
+                    className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white px-3 py-2 text-sm" />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1">Fecha de Cobro</label>
+                  <input type="date" value={form.fechaCobroCheque ?? ""} onChange={(e) => set("fechaCobroCheque", e.target.value)}
+                    className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white px-3 py-2 text-sm" />
+                </div>
+              </div>
+            </div>
+          )}
+          {(form.metodoPago === "TRANSFERENCIA" || form.metodoPago === "GIRO") && (
+            <div className="rounded-lg border border-blue-300 dark:border-blue-700 bg-blue-50 dark:bg-blue-900/20 p-4 space-y-3">
+              <p className="text-xs font-medium text-blue-700 dark:text-blue-400">Datos de la Transferencia</p>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1">Banco</label>
+                  <input type="text" value={form.bancoTransfer ?? ""} onChange={(e) => set("bancoTransfer", e.target.value)}
+                    className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white px-3 py-2 text-sm" />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1">N° de Transacción</label>
+                  <input type="text" value={form.nroTransaccion ?? ""} onChange={(e) => set("nroTransaccion", e.target.value)}
+                    className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white px-3 py-2 text-sm" />
+                </div>
+              </div>
+            </div>
+          )}
+          {form.metodoPago === "OTRO" && (
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">Especificar medio de pago</label>
+              <input type="text" value={form.otroMetodoDetalle ?? ""} onChange={(e) => set("otroMetodoDetalle", e.target.value)}
+                className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white px-3 py-2 text-sm" />
+            </div>
+          )}
+          <div>
+            <label className="block text-xs text-gray-500 mb-1">Observación</label>
+            <textarea rows={2} value={form.observacion ?? ""} onChange={(e) => set("observacion", e.target.value)}
+              className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white px-3 py-2 text-sm resize-none" />
+          </div>
+          <div className="flex justify-end gap-3 pt-2">
+            <button type="button" onClick={onClose}
+              className="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800">
+              Cancelar
+            </button>
+            <button type="submit" disabled={pending}
+              className="px-5 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium disabled:opacity-50">
+              {pending ? "Guardando…" : "Guardar Cambios"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+// ─── Modal Detalle de Movimiento ────────────────────────────
+type FilaConSaldo = MovimientoConProveedor & { saldoAcumulado: number };
+
+function ModalDetalleMovimiento({
+  m, onClose, onEditar, proyectoId,
+}: {
+  m: FilaConSaldo;
+  onClose: () => void;
+  onEditar: () => void;
+  proyectoId: string;
+}) {
+  const tipoLabel = TIPOS_MOVIMIENTO.find((t) => t.value === m.tipo)?.label ?? m.tipo;
+  const esIngreso = m.tipo === "INGRESO_CLIENTE";
+  const metodoLabel: Record<string, string> = {
+    EFECTIVO: "Efectivo", CHEQUE: "Cheque",
+    TRANSFERENCIA: "Transferencia Bancaria", GIRO: "Giro", OTRO: "Otro",
+  };
+
+  function imprimirComprobante() {
+    const empresa = getEmpresaConfig(proyectoId);
+    const colorMonto = esIngreso ? "#065f46" : "#991b1b";
+    const colorSaldo = m.saldoAcumulado >= 0 ? "#1d40ae" : "#c2410c";
+
+    // Rows helper
+    function row(label: string, value: string, bold = false) {
+      return `<tr><td style='width:160pt;padding:5pt 8pt 5pt 0;font-size:9pt;color:#6b7280;vertical-align:top'>${label}</td><td style='padding:5pt 0;font-size:9.5pt;color:#111;${bold ? "font-weight:700" : ""}'>${value}</td></tr>`;
+    }
+    function section(title: string, content: string) {
+      return `<div style='margin-bottom:14pt'><div style='font-size:8pt;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.05em;border-bottom:0.5pt solid #d1d5db;padding-bottom:4pt;margin-bottom:8pt'>${title}</div><table style='width:100%;border-collapse:collapse'>${content}</table></div>`;
+    }
+
+    let metodoDetalle = metodoLabel[m.metodoPago] ?? m.metodoPago;
+    if (m.metodoPago === "OTRO" && m.otroMetodoDetalle) metodoDetalle += " — " + m.otroMetodoDetalle;
+
+    let medioPagoRows = row("Medio de Pago", metodoDetalle);
+    if (m.metodoPago === "CHEQUE") {
+      if (m.bancoCheque) medioPagoRows += row("Banco", m.bancoCheque);
+      if (m.nroCheque) medioPagoRows += row("N° de Cheque", m.nroCheque);
+      if (m.fechaEmisionCheque) medioPagoRows += row("Fecha de Emisión", new Date(m.fechaEmisionCheque).toLocaleDateString("es-PY"));
+      if (m.fechaCobroCheque) medioPagoRows += row("Fecha de Cobro", new Date(m.fechaCobroCheque).toLocaleDateString("es-PY"));
+    }
+    if (m.metodoPago === "TRANSFERENCIA" || m.metodoPago === "GIRO") {
+      if (m.bancoTransfer) medioPagoRows += row("Banco", m.bancoTransfer);
+      if (m.nroTransaccion) medioPagoRows += row("N° Transacción", m.nroTransaccion);
+    }
+
+    const bodyContent =
+      section("Identificación del Movimiento",
+        row("Tipo", tipoLabel, true) +
+        row("Fecha", new Date(m.fecha).toLocaleDateString("es-PY", { day: "2-digit", month: "long", year: "numeric" })) +
+        (m.nroComprobante ? row("N° Comprobante", m.nroComprobante) : ""),
+      ) +
+      section("Datos del Pago",
+        row("Concepto", m.concepto) +
+        row("Beneficiario", m.beneficiario, true) +
+        (m.proveedor ? row("Razón Social", m.proveedor.razonSocial) : "") +
+        (m.proveedor?.ruc ? row("RUC / Cédula", m.proveedor.ruc) : "") +
+        row(esIngreso ? "Importe Cobrado" : "Importe Pagado",
+          `<span style='color:${colorMonto};font-weight:700;font-size:11pt'>${fmtGs(m.monto)}</span>`) +
+        row("Saldo Acumulado", `<span style='color:${colorSaldo};font-weight:700'>${fmtGs(m.saldoAcumulado)}</span>`),
+      ) +
+      section("Medio de Pago", medioPagoRows) +
+      (m.autorizadoPor || m.realizadoPor ?
+        section("Autorización y Firma",
+          (m.autorizadoPor ? row("Autorizó el Pago", m.autorizadoPor, true) : "") +
+          (m.realizadoPor ? row("Realizado por", m.realizadoPor) : ""),
+        ) : "") +
+      (m.observacion ?
+        section("Observaciones",
+          `<tr><td colspan='2' style='font-size:9pt;color:#374151;padding:4pt 0;font-style:italic'>${m.observacion}</td></tr>`,
+        ) : "") +
+      `<div style='margin-top:24pt;padding-top:12pt;border-top:1pt solid #d1d5db;display:flex;gap:40pt'>` +
+        `<div style='text-align:center;flex:1'><div style='height:40pt;border-bottom:0.5pt solid #374151;margin-bottom:6pt'></div><div style='font-size:8pt;color:#6b7280'>Conforme — Beneficiario</div></div>` +
+        `<div style='text-align:center;flex:1'><div style='height:40pt;border-bottom:0.5pt solid #374151;margin-bottom:6pt'></div><div style='font-size:8pt;color:#6b7280'>Firma Autorizante</div></div>` +
+        `<div style='text-align:center;flex:1'><div style='height:40pt;border-bottom:0.5pt solid #374151;margin-bottom:6pt'></div><div style='font-size:8pt;color:#6b7280'>Sello de la Empresa</div></div>` +
+      `</div>`;
+
+    openBrandedPrintWindow(
+      `Comprobante de Pago — ${m.beneficiario}`,
+      esIngreso ? "COMPROBANTE DE INGRESO" : "COMPROBANTE DE EGRESO",
+      `${new Date(m.fecha).toLocaleDateString("es-PY", { day: "2-digit", month: "long", year: "numeric" })} · ${tipoLabel}`,
+      bodyContent,
+      empresa,
+    );
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={onClose}>
+      <div
+        className="w-full max-w-lg bg-white dark:bg-gray-900 rounded-2xl shadow-2xl overflow-y-auto max-h-[90vh]"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+          <div>
+            <p className={`text-xs font-semibold uppercase tracking-wide ${
+              esIngreso ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"
+            }`}>{tipoLabel}</p>
+            <p className="text-base font-bold text-gray-900 dark:text-white mt-0.5">{m.concepto}</p>
+          </div>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 ml-4 shrink-0">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        <div className="px-6 py-5 space-y-5">
+          {/* Monto destacado */}
+          <div className={`rounded-xl p-4 flex items-center justify-between ${
+            esIngreso
+              ? "bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800"
+              : "bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800"
+          }`}>
+            <div>
+              <p className="text-xs text-gray-500 dark:text-gray-400">{esIngreso ? "Importe Cobrado" : "Importe Pagado"}</p>
+              <p className={`text-2xl font-bold ${
+                esIngreso ? "text-emerald-700 dark:text-emerald-400" : "text-red-700 dark:text-red-400"
+              }`}>{fmtGs(m.monto)}</p>
+            </div>
+            <div className="text-right">
+              <p className="text-xs text-gray-500 dark:text-gray-400">Saldo acumulado</p>
+              <p className={`text-sm font-semibold ${
+                m.saldoAcumulado >= 0 ? "text-blue-600 dark:text-blue-400" : "text-orange-600 dark:text-orange-400"
+              }`}>{fmtGs(m.saldoAcumulado)}</p>
+            </div>
+          </div>
+
+          {/* Detalle en grilla */}
+          <div className="grid grid-cols-2 gap-x-6 gap-y-3 text-sm">
+            <div>
+              <p className="text-xs text-gray-500 dark:text-gray-400">Beneficiario</p>
+              <p className="font-semibold text-gray-900 dark:text-white">{m.beneficiario}</p>
+              {m.proveedor && (
+                <p className="text-xs text-gray-400 mt-0.5">
+                  {m.proveedor.razonSocial}
+                  {m.proveedor.ruc && <span className="ml-1">· RUC {m.proveedor.ruc}</span>}
+                </p>
+              )}
+            </div>
+            <div>
+              <p className="text-xs text-gray-500 dark:text-gray-400">Fecha</p>
+              <p className="font-medium text-gray-900 dark:text-white">
+                {new Date(m.fecha).toLocaleDateString("es-PY", { day: "2-digit", month: "long", year: "numeric" })}
+              </p>
+            </div>
+            {m.nroComprobante && (
+              <div>
+                <p className="text-xs text-gray-500 dark:text-gray-400">N° Comprobante</p>
+                <p className="font-mono text-gray-900 dark:text-white">{m.nroComprobante}</p>
+              </div>
+            )}
+            <div>
+              <p className="text-xs text-gray-500 dark:text-gray-400">Medio de Pago</p>
+              <p className="font-medium text-gray-900 dark:text-white">
+                {m.metodoPago === "OTRO" && m.otroMetodoDetalle ? m.otroMetodoDetalle : (metodoLabel[m.metodoPago] ?? m.metodoPago)}
+              </p>
+            </div>
+          </div>
+
+          {/* Cheque */}
+          {m.metodoPago === "CHEQUE" && (m.bancoCheque || m.nroCheque) && (
+            <div className="rounded-lg bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 p-3 space-y-1">
+              <p className="text-xs font-semibold text-yellow-700 dark:text-yellow-400 mb-2">Datos del Cheque</p>
+              <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
+                {m.bancoCheque && <div><span className="text-xs text-gray-500">Banco: </span><span className="font-medium text-gray-900 dark:text-white">{m.bancoCheque}</span></div>}
+                {m.nroCheque && <div><span className="text-xs text-gray-500">N° Cheque: </span><span className="font-mono text-gray-900 dark:text-white">{m.nroCheque}</span></div>}
+                {m.fechaEmisionCheque && <div><span className="text-xs text-gray-500">Emisión: </span><span className="text-gray-900 dark:text-white">{new Date(m.fechaEmisionCheque).toLocaleDateString("es-PY")}</span></div>}
+                {m.fechaCobroCheque && <div><span className="text-xs text-gray-500">Cobro: </span><span className="text-gray-900 dark:text-white">{new Date(m.fechaCobroCheque).toLocaleDateString("es-PY")}</span></div>}
+              </div>
+            </div>
+          )}
+
+          {/* Transferencia */}
+          {(m.metodoPago === "TRANSFERENCIA" || m.metodoPago === "GIRO") && (m.bancoTransfer || m.nroTransaccion) && (
+            <div className="rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 p-3 space-y-1">
+              <p className="text-xs font-semibold text-blue-700 dark:text-blue-400 mb-2">Datos de la Transferencia</p>
+              <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
+                {m.bancoTransfer && <div><span className="text-xs text-gray-500">Banco: </span><span className="font-medium text-gray-900 dark:text-white">{m.bancoTransfer}</span></div>}
+                {m.nroTransaccion && <div><span className="text-xs text-gray-500">N° TX: </span><span className="font-mono text-gray-900 dark:text-white">{m.nroTransaccion}</span></div>}
+              </div>
+            </div>
+          )}
+
+          {/* Autorización */}
+          {(m.autorizadoPor || m.realizadoPor) && (
+            <div className="grid grid-cols-2 gap-x-6 text-sm">
+              {m.autorizadoPor && (
+                <div>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">Autorizó el Pago</p>
+                  <p className="font-semibold text-gray-900 dark:text-white">{m.autorizadoPor}</p>
+                </div>
+              )}
+              {m.realizadoPor && (
+                <div>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">Realizado por</p>
+                  <p className="font-medium text-gray-900 dark:text-white">{m.realizadoPor}</p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Observación */}
+          {m.observacion && (
+            <div>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Observaciones</p>
+              <p className="text-sm text-gray-700 dark:text-gray-300 italic bg-gray-50 dark:bg-gray-800 rounded-lg p-3">{m.observacion}</p>
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="flex items-center justify-between px-6 py-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 rounded-b-2xl">
+          <button
+            onClick={onClose}
+            className="text-sm text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+          >
+            Cerrar
+          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => { onClose(); onEditar(); }}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg border border-blue-300 dark:border-blue-700 text-sm text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors font-medium"
+            >
+              <Pencil className="w-4 h-4" /> Editar
+            </button>
+            <button
+              onClick={imprimirComprobante}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg border border-red-300 dark:border-red-700 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors font-medium"
+            >
+              <Printer className="w-4 h-4" /> Imprimir
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Etiqueta de método de pago ──────────────────────────────
 function BadgeMetodo({ metodo, detalle }: { metodo: string; detalle?: string | null }) {
   const map: Record<string, string> = {
@@ -316,6 +757,8 @@ export function FinancieroClient({ proyectoId, montoContrato, movimientos: initi
     (state: MovimientoConProveedor[], nuevo: MovimientoConProveedor) => [...state, nuevo],
   );
   const [showModal, setShowModal] = useState(false);
+  const [detalleMovimiento, setDetalleMovimiento] = useState<FilaConSaldo | null>(null);
+  const [editarMovimiento, setEditarMovimiento] = useState<FilaConSaldo | null>(null);
   const [tab, setTab] = useState<"libro" | "graficos">("libro");
   const [filtroTipo, setFiltroTipo] = useState<string>("TODOS");
   const [busqueda, setBusqueda] = useState("");
@@ -470,6 +913,93 @@ export function FinancieroClient({ proyectoId, montoContrato, movimientos: initi
     URL.revokeObjectURL(url);
   }
 
+  function exportChartsPDF() {
+    const empresa = getEmpresaConfig(proyectoId);
+    const proyNombre = document.title.replace(" — TEKÓGA", "");
+
+    // Helper: build a printable horizontal bar chart using CSS
+    function buildBarChart(
+      title: string,
+      subtitle: string,
+      items: { name: string; value: number; fill: string }[],
+    ): string {
+      const maxVal = Math.max(...items.map((d) => d.value), 1);
+      const rows = items
+        .map((d) => {
+          const pct = Math.min(100, (d.value / maxVal) * 100).toFixed(1);
+          return (
+            `<tr>` +
+            `<td style='width:110pt;font-size:9pt;color:#374151;padding:5pt 8pt 5pt 0;white-space:nowrap;vertical-align:middle'>${d.name}</td>` +
+            `<td style='vertical-align:middle;padding:4pt 0'>` +
+              `<div style='width:100%;background:#f3f4f6;border-radius:4pt;height:18pt;overflow:hidden'>` +
+                `<div style='width:${pct}%;background:${d.fill};height:100%;border-radius:4pt;display:flex;align-items:center;padding-left:6pt;box-sizing:border-box;min-width:2pt'></div>` +
+              `</div>` +
+            `</td>` +
+            `<td style='width:90pt;text-align:right;font-size:9pt;font-weight:700;color:#111;padding:5pt 0 5pt 8pt;white-space:nowrap;vertical-align:middle'>${fmtGs(d.value)}</td>` +
+            `</tr>`
+          );
+        })
+        .join("");
+      return (
+        `<div style='margin-bottom:18pt'>` +
+          `<div style='margin-bottom:6pt'>` +
+            `<span style='font-size:10pt;font-weight:700;color:#111'>${title}</span>` +
+            `<span style='font-size:8.5pt;color:#6b7280;margin-left:8pt'>${subtitle}</span>` +
+          `</div>` +
+          `<table style='width:100%;border-collapse:collapse'>` +
+            `<tbody>${rows}</tbody>` +
+          `</table>` +
+        `</div>`
+      );
+    }
+
+    // KPIs
+    const saldoColor = saldo >= 0 ? "#1d40ae" : "#c2410c";
+    const kpiHtml =
+      `<div style='display:flex;gap:10pt;flex-wrap:wrap;margin-bottom:18pt'>` +
+        (montoContrato ? `<div class='kpi'><div class='label'>Monto Contrato</div><div class='value' style='color:#374151'>${fmtGs(montoContrato)}</div></div>` : "") +
+        `<div class='kpi'><div class='label'>Total Cobrado</div><div class='value' style='color:#065f46'>${fmtGs(totalIngresado)}</div></div>` +
+        `<div class='kpi'><div class='label'>Total Egresado</div><div class='value' style='color:#991b1b'>${fmtGs(totalEgresado)}</div></div>` +
+        `<div class='kpi'><div class='label'>Saldo en Caja</div><div class='value' style='color:${saldoColor}'>${fmtGs(saldo)}</div></div>` +
+        (saldoPorCobrar !== null ? `<div class='kpi'><div class='label'>Por Cobrar al Propietario</div><div class='value' style='color:#0f766e'>${fmtGs(saldoPorCobrar)}</div></div>` : "") +
+      `</div>`;
+
+    // Porcentajes
+    const pctHtml = (montoContrato && montoContrato > 0 && pctCobrado !== null)
+      ? `<div style='margin-bottom:16pt;padding:8pt 10pt;background:#f9fafb;border:0.5pt solid #e5e7eb;border-radius:5pt;font-size:8.5pt;color:#374151'>` +
+          `Avance contractual: <strong style='color:#059669'>${pctCobrado.toFixed(1)}% cobrado</strong>` +
+          (pctPorCobrar !== null ? ` &nbsp;·&nbsp; <strong style='color:#0d9488'>${pctPorCobrar.toFixed(1)}% pendiente de cobro</strong>` : "") +
+        `</div>`
+      : "";
+
+    const chart1 = buildBarChart(
+      "Contrato · Cobrado · Saldo por Cobrar",
+      "Comparación del monto de contrato con lo cobrado y el saldo pendiente del propietario",
+      dataCobro,
+    );
+    const chart2 = buildBarChart(
+      "Total Egresado · Saldo en Caja",
+      "Egresos registrados (proveedores, personal, etc.) y saldo disponible",
+      dataEgresos,
+    );
+
+    const bodyContent =
+      `<h2>Resumen Financiero</h2>` +
+      kpiHtml +
+      pctHtml +
+      `<h2>Análisis Gráfico</h2>` +
+      chart1 +
+      chart2;
+
+    openBrandedPrintWindow(
+      "Gráficos Financieros — " + proyNombre,
+      "ESTADO FINANCIERO — GRÁFICOS",
+      proyNombre,
+      bodyContent,
+      empresa,
+    );
+  }
+
   return (
     <div className="space-y-5">
       {/* FILA 1: Monto Contrato | Total Cobrado | Saldo por Cobrar */}
@@ -549,30 +1079,41 @@ export function FinancieroClient({ proyectoId, montoContrato, movimientos: initi
                 : <><BarChart2 className="w-4 h-4" /> Gráficos</>}
             </button>
           ))}
-          {tab === "libro" && (
-            <div className="ml-auto mb-1 flex items-center gap-2">
+          <div className="ml-auto mb-1 flex items-center gap-2">
+            {tab === "libro" && (
+              <>
+                <button
+                  onClick={exportCSV}
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                  title="Exportar Libro Mayor a CSV"
+                >
+                  <Download className="w-4 h-4" /> CSV
+                </button>
+                <button
+                  onClick={exportPDF}
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-red-300 dark:border-red-700 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                  title="Exportar / Imprimir Estado Financiero en PDF"
+                >
+                  <FileText className="w-4 h-4" /> PDF
+                </button>
+                <button
+                  onClick={() => setShowModal(true)}
+                  className="flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium transition-colors"
+                >
+                  <Plus className="w-4 h-4" /> Registrar Movimiento
+                </button>
+              </>
+            )}
+            {tab === "graficos" && (
               <button
-                onClick={exportCSV}
-                className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-                title="Exportar Libro Mayor a CSV"
-              >
-                <Download className="w-4 h-4" /> CSV
-              </button>
-              <button
-                onClick={exportPDF}
+                onClick={exportChartsPDF}
                 className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-red-300 dark:border-red-700 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
-                title="Exportar / Imprimir Estado Financiero en PDF"
+                title="Exportar / Imprimir Gráficos Financieros"
               >
-                <FileText className="w-4 h-4" /> PDF
+                <FileText className="w-4 h-4" /> Exportar PDF
               </button>
-              <button
-                onClick={() => setShowModal(true)}
-                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium transition-colors"
-              >
-                <Plus className="w-4 h-4" /> Registrar Movimiento
-              </button>
-            </div>
-          )}
+            )}
+          </div>
         </div>
 
         {/* ── Filtros del Libro Mayor ── */}
@@ -684,12 +1225,20 @@ export function FinancieroClient({ proyectoId, montoContrato, movimientos: initi
                           </span>
                         </td>
                         <td className="px-4 py-3">
-                          <button
-                            onClick={() => handleEliminar(m.id)}
-                            title="Eliminar movimiento"
-                            className="p-1.5 rounded-lg text-red-400 hover:text-red-600 hover:bg-red-50 dark:text-red-500 dark:hover:text-red-400 dark:hover:bg-red-900/20 transition-colors">
-                            <Trash2 className="w-4 h-4" />
-                          </button>
+                          <div className="flex items-center gap-1">
+                            <button
+                              onClick={() => setDetalleMovimiento(m)}
+                              title="Ver detalle del movimiento"
+                              className="p-1.5 rounded-lg text-blue-400 hover:text-blue-600 hover:bg-blue-50 dark:text-blue-500 dark:hover:text-blue-400 dark:hover:bg-blue-900/20 transition-colors">
+                              <Eye className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => handleEliminar(m.id)}
+                              title="Eliminar movimiento"
+                              className="p-1.5 rounded-lg text-red-400 hover:text-red-600 hover:bg-red-50 dark:text-red-500 dark:hover:text-red-400 dark:hover:bg-red-900/20 transition-colors">
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))
@@ -758,6 +1307,25 @@ export function FinancieroClient({ proyectoId, montoContrato, movimientos: initi
               addOptimistic(m);
               router.refresh();
             });
+          }}
+        />
+      )}
+      {detalleMovimiento && (
+        <ModalDetalleMovimiento
+          m={detalleMovimiento}
+          proyectoId={proyectoId}
+          onClose={() => setDetalleMovimiento(null)}
+          onEditar={() => setEditarMovimiento(detalleMovimiento)}
+        />
+      )}
+      {editarMovimiento && (
+        <ModalEditarMovimiento
+          m={editarMovimiento}
+          proyectoId={proyectoId}
+          onClose={() => setEditarMovimiento(null)}
+          onActualizado={() => {
+            setEditarMovimiento(null);
+            router.refresh();
           }}
         />
       )}

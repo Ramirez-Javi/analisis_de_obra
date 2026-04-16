@@ -352,6 +352,21 @@ export function PresupuestoClient({
   const rubrosSerialized = useMemo(() => JSON.stringify(rubros), [rubros]);
   const isDirty = rubrosSerialized !== savedKey;
 
+  // Auto-seed localStorage from DB data on first load so that other modules
+  // (e.g. Cronograma) can read the rubros even if the user has never manually saved.
+  useEffect(() => {
+    if (initialRubros.length === 0) return;
+    try {
+      const existing = localStorage.getItem(STORAGE_KEY);
+      if (!existing || existing === "[]") {
+        const seeded = JSON.stringify(initialRubros);
+        localStorage.setItem(STORAGE_KEY, seeded);
+        setSavedKey(seeded);
+      }
+    } catch {}
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // run only on mount
+
   function handleSave() {
     setSaveState("saving");
     try {
@@ -481,6 +496,20 @@ export function PresupuestoClient({
 
   const handleDeleteRubro = useCallback((instanceId: string) => {
     setRubros((prev) => prev.filter((r) => r.instanceId !== instanceId));
+  }, []);
+
+  // ── Drag-to-reorder ──────────────────────────────────────────────────────
+  const dragFromIndex = useRef<number | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+
+  const handleReorder = useCallback((from: number, to: number) => {
+    if (from === to) return;
+    setRubros((prev) => {
+      const next = [...prev];
+      const [moved] = next.splice(from, 1);
+      next.splice(to, 0, moved);
+      return next;
+    });
   }, []);
 
   const handleRubroChange = useCallback(
@@ -682,6 +711,20 @@ export function PresupuestoClient({
                     onDeleteInsumo={handleDeleteInsumo}
                     onAddInsumo={handleAddInsumo}
                     onDeleteRubro={handleDeleteRubro}
+                    isDragOver={dragOverIndex === index}
+                    onDragStart={() => { dragFromIndex.current = index; }}
+                    onDragOver={() => setDragOverIndex(index)}
+                    onDrop={() => {
+                      if (dragFromIndex.current !== null) {
+                        handleReorder(dragFromIndex.current, index);
+                      }
+                      setDragOverIndex(null);
+                      dragFromIndex.current = null;
+                    }}
+                    onDragEnd={() => {
+                      setDragOverIndex(null);
+                      dragFromIndex.current = null;
+                    }}
                   />
                 ))}
               </div>

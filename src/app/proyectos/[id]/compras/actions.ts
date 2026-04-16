@@ -3,7 +3,7 @@
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/session";
 import { revalidatePath } from "next/cache";
-import type { EstadoFactura } from "@prisma/client";
+import type { EstadoFactura, MetodoPago } from "@prisma/client";
 import { logger } from "@/lib/logger";
 
 async function requireAuth() {
@@ -27,11 +27,21 @@ export async function getProveedoresDelProyecto(proyectoId: string) {
         where: { proyectoId },
         orderBy: { fecha: "desc" },
         take: 500,
+        include: {
+          movimiento: {
+            select: {
+              id: true, fecha: true, metodoPago: true, otroMetodoDetalle: true,
+              nroCheque: true, bancoCheque: true, fechaEmisionCheque: true, fechaCobroCheque: true,
+              nroTransaccion: true, bancoTransfer: true,
+              autorizadoPor: true, realizadoPor: true,
+              observacion: true, nroComprobante: true,
+            },
+          },
+        },
       },
     },
     orderBy: { razonSocial: "asc" },
   });
-  // Decimal → number en el boundary Server/Client
   return rows.map((p) => ({
     ...p,
     facturas: p.facturas.map((f) => ({
@@ -135,3 +145,113 @@ export async function eliminarFactura(proyectoId: string, facturaId: string) {
   }
 }
 
+// ─────────────────────────────────────────────
+// ACTUALIZAR datos de una factura
+// ─────────────────────────────────────────────
+export interface ActualizarFacturaData {
+  nroFactura: string;
+  fecha: string;
+  concepto: string;
+  monto: number;
+  fechaVencimiento?: string;
+  observacion?: string;
+}
+
+export async function actualizarFactura(proyectoId: string, facturaId: string, data: ActualizarFacturaData) {
+  await requireAuth();
+  try {
+    await prisma.facturaProveedor.update({
+      where: { id: facturaId, proyectoId },
+      data: {
+        nroFactura: data.nroFactura,
+        fecha: new Date(data.fecha),
+        concepto: data.concepto,
+        monto: data.monto,
+        fechaVencimiento: data.fechaVencimiento ? new Date(data.fechaVencimiento) : null,
+        observacion: data.observacion || null,
+      },
+    });
+    revalidatePath(`/proyectos/${proyectoId}/compras`);
+    return { ok: true };
+  } catch (err) {
+    logger.error("compras", "actualizarFactura fall\u00f3", { err });
+    return { ok: false, error: "Error al actualizar la factura" };
+  }
+}
+
+// ─────────────────────────────────────────────
+// REGISTRAR PAGO con detalles completos
+// Crea un MovimientoFinanciero EGRESO_PROVEEDOR y vincula a la factura
+// ─────────────────────────────────────────────
+export interface RegistrarPagoData {
+  fecha: string;
+  montoPagado: number;
+  autorizadoPor?: string;
+  realizadoPor?: string;
+  metodoPago: MetodoPago;
+  otroMetodoDetalle?: string;
+  nroCheque?: string;
+  bancoCheque?: string;
+  fechaEmisionCheque?: string;
+  fechaCobroCheque?: string;
+  nroTransaccion?: string;
+  bancoTransfer?: string;
+  observacion?: string;
+  nroComprobante?: string;
+}
+
+export async function registrarPagoFactura(
+  proyectoId: string,
+  facturaId: string,
+  proveedorId: string,
+  proveedorNombre: string,
+  facturaConcepto: string,
+  data: RegistrarPagoData,
+) {
+  const session = await requireAuth();
+  const userId = (session.user as { id?: string }).id;
+  try {
+    await prisma.$transaction(async (tx) => {
+      // 1. Crear el movimiento financiero
+      const movimiento = await tx.movimientoFinanciero.create({
+        data: {
+          proyectoId,
+          fecha: new Date(data.fecha),
+          tipo: "EGRESO_PROVEEDOR",
+          concepto: facturaConcepto,
+          beneficiario: proveedorNombre,
+          monto: data.montoPagado,
+          nroComprobante: data.nroComprobante || null,
+          autorizadoPor: data.autorizadoPor || null,
+          realizadoPor: data.realizadoPor || null,
+          autorizadoPorUsuarioId: userId || null,
+          metodoPago: data.metodoPago,
+          otroMetodoDetalle: data.otroMetodoDetalle || null,
+          nroCheque: data.nroCheque || null,
+          bancoCheque: data.bancoCheque || null,
+          fechaEmisionCheque: data.fechaEmisionCheque ? new Date(data.fechaEmisionCheque) : null,
+          fechaCobroCheque: data.fechaCobroCheque ? new Date(data.fechaCobroCheque) : null,
+          nroTransaccion: data.nroTransaccion || null,
+          bancoTransfer: data.bancoTransfer || null,
+          observacion: data.observacion || null,
+          proveedorId,
+        },
+      });
+      // 2. Actualizar la factura: estado PAGADA + montoPagado + link al movimiento
+      await tx.facturaProveedor.update({
+        where: { id: facturaId, proyectoId },
+        data: {
+          estado: "PAGADA",
+          montoPagado: data.montoPagado,
+          movimientoId: movimiento.id,
+        },
+      });
+    });
+    revalidatePath(`/proyectos/${proyectoId}/compras`);
+    revalidatePath(`/proyectos/${proyectoId}/financiero`);
+    return { ok: true };
+  } catch (err) {
+    logger.error("compras", "registrarPagoFactura fall\u00f3", { err });
+    return { ok: false, error: "Error al registrar el pago" };
+  }
+}

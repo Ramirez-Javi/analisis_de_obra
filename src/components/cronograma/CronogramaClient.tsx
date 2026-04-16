@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import Link from "next/link";
-import { ArrowLeft, Calendar, TrendingUp, Save, Check } from "lucide-react";
+import { ArrowLeft, Calendar, CalendarDays, TrendingUp, Save, Check, Plus, Trash2, X } from "lucide-react";
 import { calcSubtotalRubro } from "@/components/presupuesto/types";
 import type { RubroProyecto } from "@/components/presupuesto/types";
+import type { RubroProyectoDB } from "@/app/actions/init-modulos";
 import {
   LineChart,
   Line,
@@ -27,6 +28,7 @@ interface RubroCronograma {
   avanceReal: number;       // 0–100
   fechaInicioReal?: string; // YYYY-MM-DD real
   fechaFinReal?: string;    // YYYY-MM-DD real
+  esPersonalizado?: boolean; // tarea agregada manualmente en el cronograma
 }
 
 interface Proyecto {
@@ -85,14 +87,14 @@ function syncFromPresupuesto(
 
   const existingMap = new Map(existing.map((r) => [r.id, r]));
 
-  return rubrosPresupuesto.map((rp) => {
+  const result = rubrosPresupuesto.map((rp) => {
     const total = calcSubtotalRubro(rp);
     const prev = existingMap.get(rp.instanceId);
     if (prev) {
       // Keep existing timing & avance, update name and total from presupuesto
       return { ...prev, nombre: rp.nombre, total };
     }
-    // New rubro: default dates and avance
+    // New rubro: start at today — cascaded below
     return {
       id: rp.instanceId,
       nombre: rp.nombre,
@@ -102,6 +104,99 @@ function syncFromPresupuesto(
       avanceReal: 0,
     };
   });
+
+  // Cascade start dates for new rubros: each new rubro starts when the previous one ends
+  for (let i = 1; i < result.length; i++) {
+    if (!existingMap.has(result[i].id)) {
+      const prev = result[i - 1];
+      result[i] = { ...result[i], fechaInicio: addDaysToStr(prev.fechaInicio, prev.duracion) };
+    }
+  }
+
+  return result;
+}
+
+// ─── DateInputDMY ─────────────────────────────────────────────────────────────
+/**
+ * Date input that displays in dd/mm/yyyy format (Paraguay / South America).
+ * Internally stores values as YYYY-MM-DD. Includes a native calendar picker
+ * triggered by clicking the calendar icon.
+ */
+function DateInputDMY({
+  value,
+  onChange,
+  className,
+}: {
+  value: string;          // YYYY-MM-DD
+  onChange: (v: string) => void;
+  className?: string;
+}) {
+  function toDisplay(iso: string) {
+    if (!iso || iso.length < 10) return iso;
+    const [y, m, d] = iso.split("-");
+    return `${d}/${m}/${y}`;
+  }
+  function fromDisplay(dmy: string): string | null {
+    const parts = dmy.split("/");
+    if (parts.length !== 3) return null;
+    const [d, m, y] = parts;
+    if (!y || y.length !== 4) return null;
+    const iso = `${y}-${m.padStart(2, "0")}-${d.padStart(2, "0")}`;
+    return isNaN(new Date(iso + "T00:00:00").getTime()) ? null : iso;
+  }
+
+  // Track the last ISO value we've seen so we can detect external (cascade) changes
+  const [lastIso, setLastIso] = useState(value);
+  const [text, setText] = useState(() => toDisplay(value));
+
+  // When parent cascades a new value, sync display text during render (avoid setState-in-effect)
+  if (lastIso !== value) {
+    setLastIso(value);
+    setText(toDisplay(value));
+  }
+
+  const hiddenRef = useRef<HTMLInputElement>(null);
+
+  return (
+    <div className="relative inline-flex items-center w-28">
+      <input
+        type="text"
+        value={text}
+        placeholder="dd/mm/aaaa"
+        maxLength={10}
+        onChange={(e) => {
+          const raw = e.target.value;
+          setText(raw);
+          const iso = fromDisplay(raw);
+          if (iso) onChange(iso);
+        }}
+        onBlur={() => {
+          const iso = fromDisplay(text);
+          if (!iso) setText(toDisplay(value));
+        }}
+        className={`${className ?? ""} w-full pr-7`}
+      />
+      {/* Visible calendar icon — pointer-events-none so the hidden input below handles clicks */}
+      <CalendarDays
+        size={13}
+        className="absolute right-1.5 top-1/2 -translate-y-1/2 dark:text-slate-500 text-slate-400 pointer-events-none"
+      />
+      {/* Transparent native date picker positioned over the icon area */}
+      <input
+        ref={hiddenRef}
+        type="date"
+        value={value}
+        onChange={(e) => {
+          if (e.target.value) {
+            onChange(e.target.value);
+            setText(toDisplay(e.target.value));
+          }
+        }}
+        className="absolute right-0 top-0 bottom-0 w-8 opacity-0 cursor-pointer"
+        tabIndex={-1}
+      />
+    </div>
+  );
 }
 
 // ─── Bar colors ───────────────────────────────────────────────────────────────
@@ -323,11 +418,13 @@ interface Props {
   proyecto: Proyecto;
   backHref: string;
   today: string; // YYYY-MM-DD from server to avoid hydration mismatch
+  /** Rubros cargados desde DB como fallback cuando localStorage no tiene datos */
+  initialRubros?: RubroProyectoDB[];
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export function CronogramaClient({ proyecto, backHref, today }: Props) {
+export function CronogramaClient({ proyecto, backHref, today, initialRubros = [] }: Props) {
   const STORAGE_KEY = `cronograma_${proyecto.id}`;
 
   const [activeTab, setActiveTab] = useState<Tab>("gantt");
@@ -339,9 +436,17 @@ export function CronogramaClient({ proyecto, backHref, today }: Props) {
           ? (JSON.parse(cronogramaRaw) as RubroCronograma[])
           : [];
         const presupuestoRaw = localStorage.getItem(`presupuesto_${proyecto.id}`);
-        return syncFromPresupuesto(existing, presupuestoRaw, today);
+        // Si no hay datos en localStorage, usar los rubros cargados desde DB
+        const fallback = !presupuestoRaw && initialRubros.length > 0
+          ? JSON.stringify(initialRubros)
+          : presupuestoRaw;
+        return syncFromPresupuesto(existing, fallback, today);
       }
     } catch {}
+    // SSR fallback: use DB data directly
+    if (initialRubros.length > 0) {
+      return syncFromPresupuesto([], JSON.stringify(initialRubros), today);
+    }
     return [];
   });
 
@@ -356,6 +461,10 @@ export function CronogramaClient({ proyecto, backHref, today }: Props) {
   });
 
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved">("idle");
+
+  // ── Agregar tarea modal ───────────────────────────────────────────────────
+  const [modalOpen, setModalOpen] = useState(false);
+  const [nuevaTarea, setNuevaTarea] = useState({ nombre: "", fechaInicio: today, duracion: 1 });
 
   // Re-sync with presupuesto whenever the user navigates back to this tab
   // (covers the case where rubros were added/removed in the presupuesto module)
@@ -441,12 +550,44 @@ export function CronogramaClient({ proyecto, backHref, today }: Props) {
   }
 
   // ── Updater ───────────────────────────────────────────────────────────────
+  function agregarTarea() {
+    if (!nuevaTarea.nombre.trim()) return;
+    const newRow: RubroCronograma = {
+      id: `custom-${Date.now()}`,
+      nombre: nuevaTarea.nombre.trim(),
+      total: 0,
+      fechaInicio: nuevaTarea.fechaInicio,
+      duracion: Math.max(1, nuevaTarea.duracion),
+      avanceReal: 0,
+      esPersonalizado: true,
+    };
+    setRubros((prev) => [...prev, newRow]);
+    setModalOpen(false);
+    setNuevaTarea({ nombre: "", fechaInicio: today, duracion: 1 });
+  }
+
+  function eliminarTarea(id: string) {
+    setRubros((prev) => prev.filter((r) => r.id !== id));
+  }
+
   function updateRubro<K extends keyof RubroCronograma>(
     id: string,
     key: K,
     value: RubroCronograma[K]
   ) {
-    setRubros((prev) => prev.map((r) => (r.id === id ? { ...r, [key]: value } : r)));
+    setRubros((prev) => {
+      const idx = prev.findIndex((r) => r.id === id);
+      if (idx === -1) return prev;
+      const next = prev.map((r, i) => (i === idx ? { ...r, [key]: value } : r));
+      // When timing changes, cascade start dates for all subsequent rubros
+      if (key === "fechaInicio" || key === "duracion") {
+        for (let i = idx + 1; i < next.length; i++) {
+          const p = next[i - 1];
+          next[i] = { ...next[i], fechaInicio: addDaysToStr(p.fechaInicio, p.duracion) };
+        }
+      }
+      return next;
+    });
   }
 
   const totalCost = rubros.reduce((s, r) => s + r.total, 0);
@@ -547,6 +688,99 @@ export function CronogramaClient({ proyecto, backHref, today }: Props) {
           </p>
         </div>
       ) : (
+        <>
+        {/* ─── Modal: Agregar tarea ──────────────────────────────────────────── */}
+        {modalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div
+              className="absolute inset-0 dark:bg-black/60 bg-black/30 backdrop-blur-sm"
+              onClick={() => setModalOpen(false)}
+            />
+            <div className="relative z-10 w-full max-w-sm rounded-2xl border dark:border-white/[0.10] border-slate-200 dark:bg-slate-900 bg-white shadow-2xl">
+              {/* Header */}
+              <div className="flex items-center justify-between px-5 py-4 border-b dark:border-white/[0.08] border-slate-100">
+                <div className="flex items-center gap-2">
+                  <Plus size={15} className="dark:text-teal-400 text-teal-600" />
+                  <p className="text-sm font-semibold dark:text-slate-100 text-slate-800">
+                    Agregar tarea al Gantt
+                  </p>
+                </div>
+                <button
+                  onClick={() => setModalOpen(false)}
+                  className="p-1.5 rounded-lg dark:hover:bg-slate-800 hover:bg-slate-100 dark:text-slate-400 text-slate-500 transition-colors"
+                >
+                  <X size={14} />
+                </button>
+              </div>
+              {/* Body */}
+              <div className="px-5 py-4 space-y-4">
+                {/* Nombre */}
+                <div>
+                  <label className="block text-xs font-medium dark:text-slate-400 text-slate-500 mb-1">
+                    Nombre de la tarea
+                  </label>
+                  <input
+                    type="text"
+                    autoFocus
+                    placeholder="Ej: Limpieza de terreno"
+                    value={nuevaTarea.nombre}
+                    onChange={(e) => setNuevaTarea((p) => ({ ...p, nombre: e.target.value }))}
+                    onKeyDown={(e) => { if (e.key === "Enter") agregarTarea(); }}
+                    className={`${inputCls} w-full`}
+                  />
+                </div>
+                {/* Fecha inicio */}
+                <div>
+                  <label className="block text-xs font-medium dark:text-slate-400 text-slate-500 mb-1">
+                    Fecha de inicio
+                  </label>
+                  <DateInputDMY
+                    value={nuevaTarea.fechaInicio}
+                    onChange={(v) => setNuevaTarea((p) => ({ ...p, fechaInicio: v }))}
+                    className={inputCls}
+                  />
+                </div>
+                {/* Duración */}
+                <div>
+                  <label className="block text-xs font-medium dark:text-slate-400 text-slate-500 mb-1">
+                    Duración (días)
+                  </label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={365}
+                    value={nuevaTarea.duracion}
+                    onChange={(e) =>
+                      setNuevaTarea((p) => ({
+                        ...p,
+                        duracion: Math.max(1, parseInt(e.target.value) || 1),
+                      }))
+                    }
+                    className={`${inputCls} w-24 text-center`}
+                  />
+                </div>
+              </div>
+              {/* Footer */}
+              <div className="px-5 pb-5 flex gap-2 justify-end">
+                <button
+                  onClick={() => setModalOpen(false)}
+                  className="px-4 py-2 rounded-lg text-xs font-medium dark:text-slate-400 text-slate-500 dark:hover:bg-slate-800 hover:bg-slate-100 transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={agregarTarea}
+                  disabled={!nuevaTarea.nombre.trim()}
+                  className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold bg-teal-500 hover:bg-teal-400 disabled:opacity-40 disabled:cursor-not-allowed text-white transition-colors"
+                >
+                  <Plus size={13} />
+                  Agregar
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-6">
         {/* ════════════════════════════════════════════════════════════════
             VISTA 1 — PLANIFICACIÓN (GANTT)
@@ -555,23 +789,41 @@ export function CronogramaClient({ proyecto, backHref, today }: Props) {
           <div className="space-y-5">
             {/* ── Planning table ─────────────────────────────────────────── */}
             <div className="rounded-xl border dark:border-white/[0.06] border-slate-200 dark:bg-slate-900/50 bg-white overflow-hidden">
-              <div className="px-5 py-4 border-b dark:border-white/[0.06] border-slate-100">
-                <h2 className="text-sm font-semibold dark:text-slate-200 text-slate-700">
-                  Datos de Planificación
-                </h2>
-                <p className="text-xs dark:text-slate-500 text-slate-400 mt-0.5">
-                  Ajustá las fechas y duraciones para actualizar el Gantt
-                </p>
+              <div className="px-5 py-4 border-b dark:border-white/[0.06] border-slate-100 flex items-center justify-between">
+                <div>
+                  <h2 className="text-sm font-semibold dark:text-slate-200 text-slate-700">
+                    Datos de Planificación
+                  </h2>
+                  <p className="text-xs dark:text-slate-500 text-slate-400 mt-0.5">
+                    Ajustá las fechas y duraciones para actualizar el Gantt
+                  </p>
+                </div>
+                <button
+                  onClick={() => {
+                    const last = rubros[rubros.length - 1];
+                    setNuevaTarea({
+                      nombre: "",
+                      fechaInicio: last ? addDaysToStr(last.fechaInicio, last.duracion) : today,
+                      duracion: 1,
+                    });
+                    setModalOpen(true);
+                  }}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-teal-500 hover:bg-teal-400 text-white transition-colors"
+                >
+                  <Plus size={13} />
+                  Agregar tarea
+                </button>
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="dark:bg-slate-800/40 bg-slate-50 text-xs dark:text-slate-400 text-slate-500 uppercase tracking-wide">
-                      <th className="text-left px-5 py-3">Rubro</th>
+                      <th className="text-left px-5 py-3">Rubro / Tarea</th>
                       <th className="text-right px-5 py-3">Costo Total</th>
                       <th className="text-center px-5 py-3">Fecha de Inicio</th>
                       <th className="text-center px-5 py-3">Duración (días)</th>
                       <th className="text-center px-5 py-3">Fecha de Finalización</th>
+                      <th className="w-10" />
                     </tr>
                   </thead>
                   <tbody className="divide-y dark:divide-white/[0.04] divide-slate-100">
@@ -587,12 +839,9 @@ export function CronogramaClient({ proyecto, backHref, today }: Props) {
                           {formatGs(r.total)}
                         </td>
                         <td className="px-5 py-3.5 text-center">
-                          <input
-                            type="date"
+                          <DateInputDMY
                             value={r.fechaInicio}
-                            onChange={(e) =>
-                              updateRubro(r.id, "fechaInicio", e.target.value)
-                            }
+                            onChange={(v) => updateRubro(r.id, "fechaInicio", v)}
                             className={inputCls}
                           />
                         </td>
@@ -622,6 +871,17 @@ export function CronogramaClient({ proyecto, backHref, today }: Props) {
                               year: "numeric",
                             })}
                           </span>
+                        </td>
+                        <td className="px-2 py-3.5 text-center">
+                          {r.esPersonalizado && (
+                            <button
+                              onClick={() => eliminarTarea(r.id)}
+                              title="Eliminar tarea"
+                              className="p-1.5 rounded-lg dark:text-slate-500 text-slate-400 dark:hover:text-red-400 hover:text-red-500 dark:hover:bg-red-500/10 hover:bg-red-50 transition-colors"
+                            >
+                              <Trash2 size={13} />
+                            </button>
+                          )}
                         </td>
                       </tr>
                     ))}
@@ -841,21 +1101,19 @@ export function CronogramaClient({ proyecto, backHref, today }: Props) {
 
                           {/* Fecha inicio real */}
                           <td className="px-3 py-4 text-center">
-                            <input
-                              type="date"
+                            <DateInputDMY
                               value={r.fechaInicioReal ?? ""}
-                              onChange={(e) => updateRubro(r.id, "fechaInicioReal", e.target.value || undefined)}
-                              className={`${inputCls} w-32`}
+                              onChange={(v) => updateRubro(r.id, "fechaInicioReal", v || undefined)}
+                              className={inputCls}
                             />
                           </td>
 
                           {/* Fecha fin real */}
                           <td className="px-3 py-4 text-center">
-                            <input
-                              type="date"
+                            <DateInputDMY
                               value={r.fechaFinReal ?? ""}
-                              onChange={(e) => updateRubro(r.id, "fechaFinReal", e.target.value || undefined)}
-                              className={`${inputCls} w-32`}
+                              onChange={(v) => updateRubro(r.id, "fechaFinReal", v || undefined)}
+                              className={inputCls}
                             />
                           </td>
 
@@ -933,6 +1191,7 @@ export function CronogramaClient({ proyecto, backHref, today }: Props) {
           </div>
         )}
         </div>
+        </>
       )}
     </div>
   );

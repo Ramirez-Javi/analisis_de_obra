@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { ChevronRight, FolderOpen, LayoutDashboard } from "lucide-react";
+import { LayoutGrid, FolderOpen, ArrowLeft } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/session";
 import { ModuleCard } from "@/components/hub/ModuleCard";
@@ -55,29 +55,28 @@ export default async function ProyectoHubPage({
 
   return (
     <div className="flex flex-col flex-1 min-h-screen dark:bg-slate-950 bg-slate-50 transition-colors duration-200">
-      <main className="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
-
-        {/* Breadcrumb */}
-        <nav className="flex items-center gap-1.5 text-xs font-medium dark:text-slate-400 text-slate-500 mb-6">
-          <Link
-            href="/"
-            className="flex items-center gap-1 hover:text-teal-600 dark:hover:text-teal-400 transition-colors"
-          >
-            <LayoutDashboard className="w-3.5 h-3.5" />
-            Centro de Mando
-          </Link>
-          <ChevronRight className="w-3.5 h-3.5 opacity-40" />
+      {/* Sticky nav header */}
+      <div className="sticky top-[52px] z-40 border-b dark:border-white/[0.06] border-slate-200 dark:bg-slate-950/90 bg-white/90 backdrop-blur-md">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex items-center gap-3">
           <Link
             href="/proyectos"
-            className="hover:text-teal-600 dark:hover:text-teal-400 transition-colors"
+            className="flex items-center gap-1.5 text-xs font-medium dark:text-slate-400 text-slate-500 dark:hover:text-teal-400 hover:text-teal-600 transition-colors duration-150"
           >
-            Proyectos
+            <ArrowLeft size={15} />
+            Mis Proyectos
           </Link>
-          <ChevronRight className="w-3.5 h-3.5 opacity-40" />
-          <span className="dark:text-slate-200 text-slate-700 truncate max-w-[180px]">
-            {proyecto.nombre}
-          </span>
-        </nav>
+          <div className="w-px h-3.5 dark:bg-white/10 bg-slate-200" />
+          <div className="flex items-center gap-2">
+            <LayoutGrid size={14} className="dark:text-teal-400 text-teal-600" />
+            <div className="leading-none">
+              <p className="text-sm font-semibold dark:text-slate-100 text-slate-800">Centro de Mando</p>
+              <p className="text-[11px] dark:text-slate-500 text-slate-400">{proyecto.nombre}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <main className="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
 
         {/* ── Banner de contexto del proyecto ── */}
         <div className="relative mb-8 rounded-2xl overflow-hidden border dark:border-teal-900/60 border-teal-200/80">
