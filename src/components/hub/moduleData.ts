@@ -9,6 +9,7 @@
   ShoppingCart,
   ClipboardList,
   BookOpen,
+  BarChart3,
   type LucideIcon,
 } from "lucide-react";
 
@@ -170,5 +171,20 @@ export const MODULES: ModuleDefinition[] = [
     shadowColor: "shadow-rose-500/20",
     accentColor: "dark:text-rose-400 text-rose-600",
     moduloEnum: "REPORTES",
+  },
+  // 11 — Estadísticas y Dashboard
+  {
+    id: "estadisticas",
+    title: "Estadísticas y Dashboard",
+    subtitle: "Gráficos, curvas, insumos y avances reales",
+    description:
+      "Visualiza el avance real vs. proyectado, consumo de insumos por rubro, consolidado de materiales, timeline de utilización y KPIs financieros.",
+    href: "/estadisticas",
+    icon: BarChart3,
+    gradient: "from-indigo-500 to-violet-600",
+    shadowColor: "shadow-indigo-500/20",
+    accentColor: "dark:text-indigo-400 text-indigo-600",
+    badge: "Nuevo",
+    moduloEnum: "ESTADISTICAS",
   },
 ];

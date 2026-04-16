@@ -14,6 +14,7 @@ import { RubroRow } from "./RubroRow";
 import { PresupuestoToolbar } from "./PresupuestoToolbar";
 import { AsignarProyectoWidget } from "@/components/shared/AsignarProyectoWidget";
 import type { ProyectoSimple } from "@/app/actions/proyectos";
+import type { RubroProyectoDB } from "@/app/actions/init-modulos";
 
 // ── Tarjeta totalizadora ──────────────────────────────────────
 interface TotCardProps {
@@ -127,7 +128,6 @@ function DraggableCalculator({ onClose }: { onClose: () => void }) {
       const full = expr + display;
       try {
         const normalized = full.replace(/÷/g, "/").replace(/×/g, "*").replace(/−/g, "-");
-        // eslint-disable-next-line no-new-func
         const result = Function(`"use strict"; return (${normalized})`)() as number;
         const str = Number.isFinite(result) ? String(parseFloat(result.toFixed(10))) : "Error";
         setDisplay(str); setExpr(""); setWaiting(true);
@@ -258,6 +258,8 @@ interface PresupuestoClientProps {
   stickyTop?: string;
   /** Proyectos disponibles para asignar (solo relevante en modo standalone) */
   proyectosDisponibles?: ProyectoSimple[];
+  /** Rubros precargados desde DB (se usan solo si localStorage está vacío para este proyecto) */
+  initialRubros?: RubroProyectoDB[];
 }
 
 export function PresupuestoClient({
@@ -266,6 +268,7 @@ export function PresupuestoClient({
   proyecto,
   stickyTop = "top-0",
   proyectosDisponibles = [],
+  initialRubros = [],
 }: PresupuestoClientProps) {
   const STORAGE_KEY = `presupuesto_${proyecto?.id ?? "standalone"}`;
 
@@ -273,20 +276,21 @@ export function PresupuestoClient({
     try {
       if (typeof window !== "undefined") {
         const raw = localStorage.getItem(`presupuesto_${proyecto?.id ?? "standalone"}`);
-        if (raw) return JSON.parse(raw) as RubroProyecto[];
+        if (raw && raw !== "[]") return JSON.parse(raw) as RubroProyecto[];
       }
     } catch {}
-    return [];
+    // Si no hay localStorage y venimos con datos de DB, usarlos
+    return initialRubros as unknown as RubroProyecto[];
   });
 
   const [savedKey, setSavedKey] = useState<string>(() => {
     try {
       if (typeof window !== "undefined") {
         const raw = localStorage.getItem(`presupuesto_${proyecto?.id ?? "standalone"}`);
-        if (raw) return raw;
+        if (raw && raw !== "[]") return raw;
       }
     } catch {}
-    return "[]";
+    return JSON.stringify(initialRubros);
   });
 
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved">("idle");

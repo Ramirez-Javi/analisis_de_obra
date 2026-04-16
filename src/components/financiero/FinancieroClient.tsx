@@ -5,9 +5,10 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
   TrendingUp, TrendingDown, Wallet, CircleDollarSign,
-  Plus, X, Trash2, Landmark, CreditCard, BarChart2, Download, Search,
+  Plus, X, Trash2, Landmark, CreditCard, BarChart2, Download, Search, FileText,
 } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
+import { getEmpresaConfig, openBrandedPrintWindow } from "@/lib/reportHeader";
 import { crearMovimiento, eliminarMovimiento } from "@/app/proyectos/[id]/financiero/actions";
 import type { NuevoMovimientoData } from "@/app/proyectos/[id]/financiero/actions";
 import type { MovimientoFinanciero, Proveedor } from "@prisma/client";
@@ -387,6 +388,65 @@ export function FinancieroClient({ proyectoId, montoContrato, movimientos: initi
     });
   }
 
+  function exportPDF() {
+    const empresa = getEmpresaConfig(proyectoId);
+    const saldoColor = saldo >= 0 ? "#1d40ae" : "#c2410c";
+
+    const filasPDF = filasConSaldo.map((m) => {
+      const esIngreso = m.tipo === "INGRESO_CLIENTE";
+      const tipoLabel = TIPOS_MOVIMIENTO.find((t) => t.value === m.tipo)?.label ?? m.tipo;
+      const tdColor = esIngreso ? "#065f46" : "#991b1b";
+      const tdSaldoColor = m.saldoAcumulado >= 0 ? "#1d40ae" : "#c2410c";
+      const autorizadoHtml = m.autorizadoPor
+        ? "<br><small style='color:#6b7280'>Autorizó: " + m.autorizadoPor + "</small>"
+        : "";
+      return (
+        "<tr>" +
+        "<td>" + new Date(m.fecha).toLocaleDateString("es-PY") + "</td>" +
+        "<td style='color:" + tdColor + ";font-weight:600'>" + tipoLabel + "</td>" +
+        "<td>" + m.concepto + autorizadoHtml + "</td>" +
+        "<td>" + m.beneficiario + "</td>" +
+        "<td>" + m.metodoPago + "</td>" +
+        "<td>" + (m.nroComprobante ?? "—") + "</td>" +
+        "<td style='text-align:right;color:#065f46;font-weight:600'>" + (esIngreso ? fmtGs(m.monto) : "—") + "</td>" +
+        "<td style='text-align:right;color:#991b1b;font-weight:600'>" + (!esIngreso ? fmtGs(m.monto) : "—") + "</td>" +
+        "<td style='text-align:right;color:" + tdSaldoColor + ";font-weight:700'>" + fmtGs(m.saldoAcumulado) + "</td>" +
+        "</tr>"
+      );
+    }).join("");
+
+    const kpiContrato = montoContrato
+      ? "<div class='kpi'><div class='label'>Monto Contrato</div><div class='value' style='color:#374151'>" + fmtGs(montoContrato) + "</div></div>"
+      : "";
+    const kpiPorCobrar = saldoPorCobrar !== null
+      ? "<div class='kpi'><div class='label'>Por Cobrar al Propietario</div><div class='value' style='color:#0f766e'>" + fmtGs(saldoPorCobrar) + "</div></div>"
+      : "";
+
+    const bodyContent =
+      "<div class='kpis'>" +
+        kpiContrato +
+        "<div class='kpi'><div class='label'>Total Cobrado</div><div class='value' style='color:#065f46'>" + fmtGs(totalIngresado) + "</div></div>" +
+        "<div class='kpi'><div class='label'>Total Egresado</div><div class='value' style='color:#991b1b'>" + fmtGs(totalEgresado) + "</div></div>" +
+        "<div class='kpi'><div class='label'>Saldo en Caja</div><div class='value' style='color:" + saldoColor + "'>" + fmtGs(saldo) + "</div></div>" +
+        kpiPorCobrar +
+      "</div>" +
+      "<h2>Libro Mayor de Movimientos</h2>" +
+      "<table><thead><tr>" +
+        "<th>Fecha</th><th>Tipo</th><th>Concepto</th><th>Beneficiario</th><th>Medio Pago</th><th>Comprobante</th>" +
+        "<th style='text-align:right'>Ingreso</th><th style='text-align:right'>Egreso</th><th style='text-align:right'>Saldo Acum.</th>" +
+      "</tr></thead>" +
+      "<tbody>" + filasPDF + "</tbody></table>";
+
+    const proyNombre = document.title.replace(" — TEKÓGA", "");
+    openBrandedPrintWindow(
+      "Estado Financiero — " + proyNombre,
+      "ESTADO FINANCIERO",
+      proyNombre,
+      bodyContent,
+      empresa,
+    );
+  }
+
   function exportCSV() {
     const header = ["Fecha", "Tipo", "Concepto", "Beneficiario", "Medio de Pago", "Comprobante", "Ingreso (Gs.)", "Egreso (Gs.)", "Saldo Acumulado (Gs.)"];
     const rows = filasConSaldo.map((m) => [
@@ -497,6 +557,13 @@ export function FinancieroClient({ proyectoId, montoContrato, movimientos: initi
                 title="Exportar Libro Mayor a CSV"
               >
                 <Download className="w-4 h-4" /> CSV
+              </button>
+              <button
+                onClick={exportPDF}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-red-300 dark:border-red-700 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                title="Exportar / Imprimir Estado Financiero en PDF"
+              >
+                <FileText className="w-4 h-4" /> PDF
               </button>
               <button
                 onClick={() => setShowModal(true)}

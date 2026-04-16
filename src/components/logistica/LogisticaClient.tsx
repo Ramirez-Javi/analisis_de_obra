@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ArrowLeft, Truck, Wrench, PackageOpen, Plus, Trash2 } from "lucide-react";
 import { AsignarProyectoWidget } from "@/components/shared/AsignarProyectoWidget";
 import type { ProyectoSimple } from "@/app/actions/proyectos";
+import type { EquipoRubroDB, GastoLogisticoDB, RubroMockDB } from "@/app/actions/init-modulos";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -186,11 +187,13 @@ function TabBtn({
 function TabEquipos({
   equipos,
   setEquipos,
+  rubrosMock,
 }: {
   equipos: EquipoRubro[];
   setEquipos: React.Dispatch<React.SetStateAction<EquipoRubro[]>>;
+  rubrosMock: { id: string; nombre: string }[];
 }) {
-  const rubroOpts = RUBROS_MOCK.map((r) => ({ value: r.id, label: r.nombre }));
+  const rubroOpts = rubrosMock.map((r) => ({ value: r.id, label: r.nombre }));
   const unidadOpts = UNIDADES.map((u) => ({ value: u, label: u }));
 
   const update = (id: string, field: keyof EquipoRubro, value: string | number) => {
@@ -204,7 +207,7 @@ function TabEquipos({
       ...prev,
       {
         id: uid("e"),
-        rubroId: RUBROS_MOCK[0].id,
+        rubroId: rubrosMock[0]?.id ?? "r1",
         descripcion: "",
         unidad: "Días",
         cantidad: 1,
@@ -360,7 +363,7 @@ function TabEquipos({
           </div>
           <div className="divide-y dark:divide-white/[0.04] divide-slate-100">
             {Array.from(grouped.entries()).map(([rubroId, items]) => {
-              const rubro = RUBROS_MOCK.find((r) => r.id === rubroId);
+              const rubro = rubrosMock.find((r) => r.id === rubroId);
               const total = items.reduce((s, e) => s + subtotal(e), 0);
               return (
                 <div key={rubroId} className="flex items-center justify-between px-4 py-2.5">
@@ -532,6 +535,9 @@ interface LogisticaClientProps {
   proyecto?: { id: string; codigo: string; nombre: string };
   stickyTop?: string;
   proyectosDisponibles?: ProyectoSimple[];
+  initialEquipos?: EquipoRubroDB[];
+  initialGastos?: GastoLogisticoDB[];
+  initialRubrosMock?: RubroMockDB[];
 }
 
 export function LogisticaClient({
@@ -539,9 +545,17 @@ export function LogisticaClient({
   proyecto,
   stickyTop = "top-0",
   proyectosDisponibles = [],
+  initialEquipos,
+  initialGastos,
+  initialRubrosMock,
 }: LogisticaClientProps) {
-  const [equipos, setEquipos] = useState<EquipoRubro[]>(EQUIPOS_INICIALES);
-  const [gastos, setGastos] = useState<GastoLogistico[]>(GASTOS_INICIALES);
+  const rubrosMock = initialRubrosMock?.length ? initialRubrosMock : RUBROS_MOCK;
+  const [equipos, setEquipos] = useState<EquipoRubro[]>(
+    initialEquipos?.length ? (initialEquipos as unknown as EquipoRubro[]) : EQUIPOS_INICIALES
+  );
+  const [gastos, setGastos] = useState<GastoLogistico[]>(
+    initialGastos?.length ? (initialGastos as unknown as GastoLogistico[]) : GASTOS_INICIALES
+  );
   const [activeTab, setActiveTab] = useState<"equipos" | "logistica">("equipos");
 
   const totalEquipos = useMemo(
@@ -669,7 +683,7 @@ export function LogisticaClient({
 
         {/* Tab activo */}
         {activeTab === "equipos" ? (
-          <TabEquipos equipos={equipos} setEquipos={setEquipos} />
+          <TabEquipos equipos={equipos} setEquipos={setEquipos} rubrosMock={rubrosMock} />
         ) : (
           <TabLogistica gastos={gastos} setGastos={setGastos} />
         )}

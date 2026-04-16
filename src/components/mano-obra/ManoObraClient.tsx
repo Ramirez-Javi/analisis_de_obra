@@ -25,6 +25,7 @@ import {
 } from "recharts";
 import { AsignarProyectoWidget } from "@/components/shared/AsignarProyectoWidget";
 import type { ProyectoSimple } from "@/app/actions/proyectos";
+import type { ContratistaDB, PagoRegistroDB } from "@/app/actions/init-modulos";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -943,6 +944,8 @@ interface ManoObraClientProps {
   proyecto?: { id: string; codigo: string; nombre: string };
   stickyTop?: string;
   proyectosDisponibles?: ProyectoSimple[];
+  initialContratistas?: ContratistaDB[];
+  initialPagosMap?: Record<string, PagoRegistroDB[]>;
 }
 
 export function ManoObraClient({
@@ -950,16 +953,24 @@ export function ManoObraClient({
   proyecto,
   stickyTop = "top-0",
   proyectosDisponibles = [],
+  initialContratistas,
+  initialPagosMap,
 }: ManoObraClientProps) {
-  const [contratistas, setContratistas] = useState<Contratista[]>(CONTRATISTAS_INICIALES);
-  const [pagosMap, setPagosMap] = useState<Record<string, PagoRegistro[]>>({
-    c1: PAGOS_INICIALES,
-    c2: [],
-  });
-  const [bitacoraMap, setBitacoraMap] = useState<Record<string, BitacoraRegistro[]>>({
-    c1: BITACORA_INICIAL,
-    c2: [],
-  });
+  const [contratistas, setContratistas] = useState<Contratista[]>(
+    initialContratistas?.length
+      ? (initialContratistas as unknown as Contratista[])
+      : CONTRATISTAS_INICIALES
+  );
+  const [pagosMap, setPagosMap] = useState<Record<string, PagoRegistro[]>>(
+    initialPagosMap && Object.keys(initialPagosMap).length
+      ? (initialPagosMap as unknown as Record<string, PagoRegistro[]>)
+      : { c1: PAGOS_INICIALES, c2: [] }
+  );
+  const [bitacoraMap, setBitacoraMap] = useState<Record<string, BitacoraRegistro[]>>(
+    initialContratistas?.length
+      ? Object.fromEntries(initialContratistas.map((c) => [c.id, []]))
+      : { c1: BITACORA_INICIAL, c2: [] }
+  );
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"ficha" | "cuenta" | "bitacora">("ficha");

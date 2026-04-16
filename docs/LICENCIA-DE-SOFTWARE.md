@@ -34,7 +34,7 @@ A los efectos de este Contrato, se entiende por:
 
 **1.5 "Datos del Cliente"**: Toda la información ingresada por el Licenciatario y sus Usuarios en el Software, incluyendo datos de proyectos, presupuestos, finanzas, empleados, proveedores y cualquier otro contenido generado durante el uso del sistema.
 
-**1.6 "Código de Activación" o "Licencia"**: Clave alfanumérica única generada por TekoInnova y vinculada al plan comercial adquirido por el Licenciatario, necesaria para desbloquear las funcionalidades completas del Software.
+**1.6 "Código de Activación" o "Licencia"**: Clave alfanumérica única generada por TekoInnova y vinculada al plan comercial y al ciclo de suscripción vigente del Licenciatario, necesaria para desbloquear las funcionalidades completas del Software. La clave tiene una fecha de vencimiento asociada al ciclo pagado; al renovar la suscripción, TekoInnova genera o extiende la clave correspondiente.
 
 **1.7 "Período de Prueba"**: Período de diez (10) días calendario desde la primera instalación, durante el cual el Software puede usarse con funcionalidades limitadas sin necesidad de Código de Activación.
 
@@ -44,7 +44,7 @@ A los efectos de este Contrato, se entiende por:
 
 ## ARTÍCULO 2 — CONCESIÓN DE LICENCIA
 
-**2.1 Alcance de la licencia.** TekoInnova concede al Licenciatario una licencia no exclusiva, no transferible, intransferible y revocable para:
+**2.1 Naturaleza de la licencia.** El Software se licencia bajo un modelo de **suscripción anual renovable**. No se trata de una venta ni de una licencia perpetua. TekoInnova concede al Licenciatario una licencia no exclusiva, no transferible y revocable, válida durante el período pagado, para:
 
 a) Instalar el Software en **un (1) servidor local** dentro de las instalaciones del Licenciatario;
 
@@ -52,7 +52,9 @@ b) Permitir el acceso al Software a los Usuarios autorizados según el plan adqu
 
 c) Usar el Software para los fines comerciales internos del Licenciatario relacionados con la gestión de proyectos de construcción.
 
-**2.2 Acceso multiusuario.** Dentro del servidor local autorizado, el Licenciatario puede permitir el acceso simultáneo de múltiples Usuarios conforme a los límites de su plan. No se requiere licencia adicional por cada Usuario, siempre que operen bajo el mismo servidor local licenciado.
+**2.2 Vigencia de la licencia.** La licencia está activa únicamente mientras la suscripción se encuentre vigente y al día en sus pagos. Al vencer el período sin renovación, el Software entra en modo de solo lectura: los datos del Licenciatario permanecen accesibles para consulta y exportación, pero no se pueden crear ni modificar registros.
+
+**2.3 Acceso multiusuario.** El Servidor base incluye un (1) usuario de escritorio. El Licenciatario puede agregar usuarios adicionales conforme a los términos del Artículo 6. Cada usuario adicional está sujeto a su propio ciclo de facturación mensual conforme al plan vigente.
 
 **2.3 Copia de seguridad.** El Licenciatario puede realizar copias del Software exclusivamente con fines de copia de seguridad operational y recuperación ante desastres, siempre que dichas copias no se instalen ni usen en ordenadores adicionales.
 
@@ -114,15 +116,34 @@ b) Ingresar el Código de Activación provisto por TekoInnova en la pantalla de 
 
 ---
 
-## ARTÍCULO 6 — PLANES Y ACTUALIZACIONES
+## ARTÍCULO 6 — MODELO DE SUSCRIPCIÓN, FACTURACIÓN Y USUARIOS ADICIONALES
 
-**6.1** Las condiciones específicas de cada plan (número de conexiones LAN simultáneas, acceso de campo, soporte técnico) se detallan en el documento **"Planes Comerciales TEKÓGA"** disponible en tekoinnova.com, que forma parte integrante de este Contrato.
+**6.1 Plan Servidor base.** El plan base comprende el uso del Software en un (1) servidor local por un ciclo anual. El Licenciatario puede optar por:
 
-**6.2** Todos los planes incluyen actualizaciones del Software disponibles durante la vigencia del plan adquirido. Las actualizaciones se distribuyen como nuevas versiones del instalador descargable.
+| Modalidad | Precio | Total anual |
+|---|---|---|
+| Mensual | USD 25 / mes | USD 300 / año |
+| Anual prepago _(10 % de descuento)_ | USD 270 / año | USD 270 / año |
 
-**6.3** El plan Corporativo incluye actualización automática en segundo plano. Todos los demás planes requieren descarga e instalación manual.
+El pago mensual no genera compromiso anual; el Licenciatario puede no renovar el mes siguiente con aviso previo de tres (3) días.
 
-**6.4** TekoInnova se reserva el derecho de modificar las características y precios de los planes con un aviso mínimo de treinta (30) días. Las condiciones vigentes al momento de la compra se mantienen durante el período pagado.
+**6.2 Usuarios adicionales.** El Licenciatario puede contratar usuarios adicionales conforme a las siguientes condiciones:
+
+a) Cada usuario adicional tiene un costo de **USD 15 por usuario por mes**, facturado de forma estrictamente mensual, sin compromiso anual;
+
+b) El Licenciatario puede activar o cancelar usuarios adicionales en cualquier mes, sin penalidad;
+
+c) Cada usuario adicional incluye una (1) conexión de escritorio en red local (LAN) y un (1) acceso de campo por código QR;
+
+d) Si se activa un usuario adicional en un mes intermedio del ciclo anual del servidor, el primer pago se prorratea por los meses restantes hasta la fecha de renovación del servidor. A partir de ese punto, el usuario se factura mensualmente de forma independiente.
+
+**Ejemplo de prorrateo**: servidor contratado de junio a junio (ciclo anual); usuario adicional activado en diciembre → primer cobro: USD 15 × 7 meses = USD 105. Desde julio siguiente se factura USD 15 / mes.
+
+**6.3 Renovación.** La suscripción se renueva automáticamente salvo que el Licenciatario notifique su cancelación con un mínimo de tres (3) días antes del vencimiento del ciclo vigente.
+
+**6.4 Actualizaciones.** Todos los planes incluyen actualizaciones del Software (correcciones de errores, mejoras, nuevos módulos) durante la vigencia de la suscripción activa. Las actualizaciones se distribuyen como nuevos instaladores descargables. El plan Corporativo puede incluir actualización automática en segundo plano según acuerdo específico.
+
+**6.5 Cambios de precio.** TekoInnova se reserva el derecho de modificar los precios de los planes con un aviso mínimo de treinta (30) días. El precio vigente en el momento del pago se aplica íntegramente al período ya pagado; el nuevo precio aplica a partir del siguiente ciclo de renovación.
 
 ---
 
@@ -194,9 +215,15 @@ INCLUSO SI TEKOINNOVA HA SIDO ADVERTIDA DE LA POSIBILIDAD DE TALES DAÑOS Y AUNQ
 
 ## ARTÍCULO 11 — VIGENCIA Y TERMINACIÓN
 
-**11.1** Este Contrato entra en vigor en la fecha de instalación o primer uso del Software y tiene vigencia por el período correspondiente al plan adquirido.
+**11.1** Este Contrato entra en vigor en la fecha de activación del Software y tiene vigencia mientras la suscripción se encuentre activa y al día en sus pagos.
 
-**11.2** El Licenciatario puede terminar este Contrato en cualquier momento desinstalando el Software y destruyendo todas las copias en su poder. La terminación anticipada por parte del Licenciatario no genera derecho a reembolso del período no utilizado, salvo acuerdo expreso contrario.
+**11.2 No renovación.** El Licenciatario puede cancelar la renovación automática en cualquier momento notificando a TekoInnova con al menos tres (3) días antes del vencimiento del ciclo vigente. Tras la cancelación:
+- El Software permanece activo hasta el último día del período ya pagado
+- Al vencer, el Software entra en **modo de solo lectura** — el Licenciatario conserva acceso completo de consulta y exportación de sus Datos del Cliente
+- No se genera ningún cargo adicional
+- No hay reembolso por los días no utilizados dentro del ciclo pagado
+
+**11.3 Cancelación anticipada por el Licenciatario.** El Licenciatario puede cancelar en cualquier momento con efecto inmediato desinstalando el Software. No se reembolsa el período pagado no utilizado, salvo acuerdo expreso distinto por escrito.
 
 **11.3** TekoInnova puede terminar este Contrato de forma inmediata si el Licenciatario:
 - Incumple cualquier disposición material de este Contrato
@@ -270,4 +297,4 @@ Asunción, República del Paraguay
 
 ---
 
-*CLUF TEKÓGA v1.0 · Vigente desde el 1 de abril de 2026*
+*CLUF TEKÓGA v1.1 · Revisado el 14 de abril de 2026 — Modelo de suscripción anual*

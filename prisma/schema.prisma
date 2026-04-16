@@ -355,6 +355,9 @@ model RubroProyecto {
   // Contratos MO asociados (muchos a muchos)
   contratosMO ContratoRubroProyecto[]
 
+  // Registros de instalación as-built vinculados a este rubro
+  asBuiltRegistros AsBuiltRegistro[]
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -715,6 +718,7 @@ enum ModuloSistema {
   INVENTARIO
   BITACORA
   REPORTES
+  ESTADISTICAS
 }
 
 // ============================================================
@@ -791,6 +795,10 @@ model AsBuiltRegistro {
 
   recepcionId String
   recepcion   RecepcionBodega  @relation(fields: [recepcionId], references: [id], onDelete: Cascade)
+
+  // Trazabilidad por rubro — permite saber qué insumo de qué rubro se instaló
+  rubroProyectoId String?
+  rubroProyecto   RubroProyecto? @relation(fields: [rubroProyectoId], references: [id], onDelete: SetNull)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

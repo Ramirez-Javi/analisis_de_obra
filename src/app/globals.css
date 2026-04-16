@@ -56,3 +56,151 @@ body {
   background: rgba(6, 182, 212, 0.25);
   color: #e2e8f0;
 }
+
+/* ============================================================
+   IMPRESIÓN — Estadísticas y Reportes
+   Fuerza fondo blanco, texto negro y colores sólidos de alto
+   contraste para que los gráficos sean legibles en papel.
+   ============================================================ */
+@media print {
+  /* Reset de página */
+  @page {
+    size: A4 landscape;
+    margin: 12mm 14mm 12mm 14mm;
+  }
+
+  /* Forzar fondo blanco y texto negro en toda la página */
+  html,
+  body {
+    background: #ffffff !important;
+    color: #0f172a !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* Eliminar elementos de navegación en impresión */
+  header,
+  nav,
+  .no-print,
+  [data-no-print],
+  button:not([data-print-visible]) {
+    display: none !important;
+  }
+
+  /* Contenedor principal sin padding extra */
+  main {
+    padding: 0 !important;
+    max-width: 100% !important;
+  }
+
+  /* Sección de estadísticas: fondo blanco, sin sombras */
+  .estadisticas-print-root,
+  .estadisticas-print-root * {
+    background: #ffffff !important;
+    color: #0f172a !important;
+    border-color: #cbd5e1 !important;
+    box-shadow: none !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* Tarjetas KPI: borde visible, sin gradiente de fondo */
+  .kpi-card-print {
+    border: 1.5px solid #94a3b8 !important;
+    break-inside: avoid;
+  }
+
+  /* Gráficos: no cortar a mitad de página */
+  .grafico-print-block {
+    break-inside: avoid;
+    page-break-inside: avoid;
+    margin-bottom: 16px;
+  }
+
+  /* Títulos de sección */
+  .print-section-title {
+    font-size: 13pt;
+    font-weight: 700;
+    color: #1e293b !important;
+    border-bottom: 2px solid #334155;
+    padding-bottom: 4px;
+    margin-bottom: 10px;
+  }
+
+  /* Tablas de datos */
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    font-size: 8pt;
+  }
+  table th {
+    background: #f1f5f9 !important;
+    color: #334155 !important;
+    font-weight: 700;
+    border: 1px solid #94a3b8 !important;
+    padding: 4px 6px;
+  }
+  table td {
+    border: 1px solid #cbd5e1 !important;
+    padding: 3px 6px;
+    color: #0f172a !important;
+  }
+  table tr:nth-child(even) td {
+    background: #f8fafc !important;
+  }
+
+  /* Recharts SVG — forzar visibilidad de texto y líneas en B/N */
+  .recharts-wrapper svg text {
+    fill: #1e293b !important;
+    font-size: 8pt !important;
+    font-weight: 600;
+  }
+  .recharts-cartesian-grid line {
+    stroke: #94a3b8 !important;
+    stroke-width: 1px !important;
+    stroke-dasharray: 3 3 !important;
+  }
+  .recharts-cartesian-axis-line {
+    stroke: #475569 !important;
+    stroke-width: 1.5px !important;
+  }
+  .recharts-cartesian-axis-tick-line {
+    stroke: #475569 !important;
+  }
+  .recharts-legend-item-text {
+    color: #1e293b !important;
+    fill: #1e293b !important;
+  }
+  /* Etiquetas de datos dentro de barras/líneas siempre visibles */
+  .recharts-label,
+  .recharts-label-list text {
+    fill: #0f172a !important;
+    font-size: 7pt !important;
+    font-weight: 700 !important;
+  }
+
+  /* Colores de barras de ALTO CONTRASTE para impresión */
+  /* Proyectado — azul oscuro */
+  .bar-proyectado rect { fill: #1e3a5f !important; }
+  /* Utilizado — verde oscuro */
+  .bar-utilizado rect { fill: #14532d !important; }
+  /* Bodega — naranja oscuro */
+  .bar-bodega rect { fill: #7c2d12 !important; }
+  /* Por adquirir — violeta oscuro */
+  .bar-adquirir rect { fill: #3b0764 !important; }
+
+  /* Líneas de gráficos */
+  .line-real path { stroke: #1e3a5f !important; stroke-width: 2.5px !important; }
+  .line-proyeccion path { stroke: #7c2d12 !important; stroke-width: 2px !important; stroke-dasharray: 6 3 !important; }
+  .line-diaria path { stroke: #94a3b8 !important; stroke-width: 1px !important; }
+
+  /* Leyendas */
+  .recharts-legend-wrapper {
+    padding: 4px 0 !important;
+  }
+
+  /* Página nueva antes de cada bloque de proyecto en multi-proyecto */
+  .print-page-break {
+    page-break-before: always;
+  }
+}
