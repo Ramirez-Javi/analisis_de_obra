@@ -101,6 +101,16 @@ export interface PagoRegistroDB {
   monto: number;
   porcentajePago: number;
   porcentajeAvance: number;
+  metodoPago?: string;
+  autorizadoPor?: string;
+  realizadoPor?: string;
+  nroComprobante?: string;
+  observacion?: string;
+  otroMetodoDetalle?: string;
+  nroCheque?: string;
+  bancoCheque?: string;
+  nroTransaccion?: string;
+  bancoTransfer?: string;
 }
 
 export interface ContratistaDB {
@@ -133,6 +143,7 @@ export async function cargarManoObraProyecto(
     include: {
       personal: true,
       pagos: { orderBy: { fecha: "asc" } },
+      movimientos: { orderBy: { fecha: "asc" } },
       rubrosAsignados: {
         include: { rubroProyecto: { include: { rubroMaestro: true } } },
       },
@@ -165,9 +176,11 @@ export async function cargarManoObraProyecto(
   const pagosMap: Record<string, PagoRegistroDB[]> = {};
   for (const c of contratos) {
     let acumulado = 0;
-    pagosMap[c.id] = c.pagos.map((p) => {
+    pagosMap[c.id] = c.pagos.map((p, i) => {
       const monto = Number(p.monto);
       acumulado += monto;
+      // Find matching movimiento by index (same order, same contrato)
+      const mov = c.movimientos[i];
       return {
         id: p.id,
         fecha: p.fecha.toISOString().slice(0, 10),
@@ -178,6 +191,16 @@ export async function cargarManoObraProyecto(
         porcentajeAvance: Number(c.montoPactado) > 0
           ? Math.round((acumulado / Number(c.montoPactado)) * 100)
           : 0,
+        metodoPago: mov?.metodoPago ?? undefined,
+        autorizadoPor: mov?.autorizadoPor ?? undefined,
+        realizadoPor: mov?.realizadoPor ?? undefined,
+        nroComprobante: mov?.nroComprobante ?? undefined,
+        observacion: mov?.observacion ?? undefined,
+        otroMetodoDetalle: mov?.otroMetodoDetalle ?? undefined,
+        nroCheque: mov?.nroCheque ?? undefined,
+        bancoCheque: mov?.bancoCheque ?? undefined,
+        nroTransaccion: mov?.nroTransaccion ?? undefined,
+        bancoTransfer: mov?.bancoTransfer ?? undefined,
       };
     });
   }

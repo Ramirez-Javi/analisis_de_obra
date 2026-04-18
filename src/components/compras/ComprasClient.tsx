@@ -313,12 +313,6 @@ function ModalDetalleFactura({
                 <p className="font-medium text-gray-900 dark:text-white">{new Date(factura.fechaVencimiento).toLocaleDateString("es-PY", { day: "2-digit", month: "long", year: "numeric" })}</p>
               </div>
             )}
-            {m?.nroComprobante && (
-              <div>
-                <p className="text-xs text-gray-500 dark:text-gray-400">N° Comprobante de Pago</p>
-                <p className="font-mono text-gray-900 dark:text-white">{m.nroComprobante}</p>
-              </div>
-            )}
           </div>
 
           {/* Pago registrado */}
@@ -326,40 +320,65 @@ function ModalDetalleFactura({
             <>
               <div>
                 <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">Datos del Pago</p>
-                <div className="rounded-lg bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 p-3 space-y-2 text-sm">
+                <div className="rounded-lg bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 p-3 space-y-3 text-sm">
+                  {/* Fila 1: fecha + comprobante */}
                   <div className="grid grid-cols-2 gap-2">
                     <div>
                       <p className="text-xs text-gray-500">Fecha de Pago</p>
                       <p className="font-medium text-gray-900 dark:text-white">{new Date(m.fecha).toLocaleDateString("es-PY", { day: "2-digit", month: "long", year: "numeric" })}</p>
                     </div>
                     <div>
-                      <p className="text-xs text-gray-500">Medio de Pago</p>
-                      <p className="font-medium text-gray-900 dark:text-white">{metodoStr}</p>
+                      <p className="text-xs text-gray-500">N° Comprobante</p>
+                      <p className={`font-mono ${m.nroComprobante ? "text-gray-900 dark:text-white" : "text-gray-400 dark:text-gray-500 italic"}`}>{m.nroComprobante ?? "—"}</p>
                     </div>
                   </div>
-                  {m.metodoPago === "CHEQUE" && (m.bancoCheque || m.nroCheque) && (
-                    <div className="rounded bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 p-2 grid grid-cols-2 gap-1">
-                      <p className="col-span-2 text-xs font-semibold text-yellow-700 dark:text-yellow-400 mb-1">Cheque</p>
-                      {m.bancoCheque && <span className="text-xs text-gray-500">Banco: <span className="text-gray-900 dark:text-white font-medium">{m.bancoCheque}</span></span>}
-                      {m.nroCheque && <span className="text-xs text-gray-500">N°: <span className="font-mono text-gray-900 dark:text-white">{m.nroCheque}</span></span>}
-                      {m.fechaEmisionCheque && <span className="text-xs text-gray-500">Emisión: <span className="text-gray-900 dark:text-white">{new Date(m.fechaEmisionCheque).toLocaleDateString("es-PY")}</span></span>}
-                      {m.fechaCobroCheque && <span className="text-xs text-gray-500">Cobro: <span className="text-gray-900 dark:text-white">{new Date(m.fechaCobroCheque).toLocaleDateString("es-PY")}</span></span>}
+                  {/* Fila 2: método */}
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <p className="text-xs text-gray-500">Medio de Pago</p>
+                      <p className="font-medium text-gray-900 dark:text-white">{metodoStr ?? "—"}</p>
+                    </div>
+                  </div>
+                  {/* Sub-sección CHEQUE */}
+                  {m.metodoPago === "CHEQUE" && (
+                    <div className="rounded bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 p-2 space-y-1">
+                      <p className="text-xs font-semibold text-yellow-700 dark:text-yellow-400 mb-1">Cheque</p>
+                      <div className="grid grid-cols-2 gap-1">
+                        <span className="text-xs text-gray-500">Banco: <span className={`font-medium ${m.bancoCheque ? "text-gray-900 dark:text-white" : "text-gray-400 italic"}`}>{m.bancoCheque ?? "—"}</span></span>
+                        <span className="text-xs text-gray-500">N°: <span className={`font-mono ${m.nroCheque ? "text-gray-900 dark:text-white" : "text-gray-400 italic"}`}>{m.nroCheque ?? "—"}</span></span>
+                        <span className="text-xs text-gray-500">Emisión: <span className={m.fechaEmisionCheque ? "text-gray-900 dark:text-white" : "text-gray-400 italic"}>{m.fechaEmisionCheque ? new Date(m.fechaEmisionCheque).toLocaleDateString("es-PY") : "—"}</span></span>
+                        <span className="text-xs text-gray-500">Cobro: <span className={m.fechaCobroCheque ? "text-gray-900 dark:text-white" : "text-gray-400 italic"}>{m.fechaCobroCheque ? new Date(m.fechaCobroCheque).toLocaleDateString("es-PY") : "—"}</span></span>
+                      </div>
                     </div>
                   )}
-                  {(m.metodoPago === "TRANSFERENCIA" || m.metodoPago === "GIRO") && (m.bancoTransfer || m.nroTransaccion) && (
-                    <div className="rounded bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 p-2 grid grid-cols-2 gap-1">
-                      <p className="col-span-2 text-xs font-semibold text-blue-700 dark:text-blue-400 mb-1">Transferencia</p>
-                      {m.bancoTransfer && <span className="text-xs text-gray-500">Banco: <span className="text-gray-900 dark:text-white font-medium">{m.bancoTransfer}</span></span>}
-                      {m.nroTransaccion && <span className="text-xs text-gray-500">N° TX: <span className="font-mono text-gray-900 dark:text-white">{m.nroTransaccion}</span></span>}
+                  {/* Sub-sección TRANSFERENCIA/GIRO */}
+                  {(m.metodoPago === "TRANSFERENCIA" || m.metodoPago === "GIRO") && (
+                    <div className="rounded bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 p-2 space-y-1">
+                      <p className="text-xs font-semibold text-blue-700 dark:text-blue-400 mb-1">Transferencia</p>
+                      <div className="grid grid-cols-2 gap-1">
+                        <span className="text-xs text-gray-500">Banco: <span className={`font-medium ${m.bancoTransfer ? "text-gray-900 dark:text-white" : "text-gray-400 italic"}`}>{m.bancoTransfer ?? "—"}</span></span>
+                        <span className="text-xs text-gray-500">N° TX: <span className={`font-mono ${m.nroTransaccion ? "text-gray-900 dark:text-white" : "text-gray-400 italic"}`}>{m.nroTransaccion ?? "—"}</span></span>
+                      </div>
                     </div>
                   )}
-                  {(m.autorizadoPor || m.realizadoPor) && (
-                    <div className="grid grid-cols-2 gap-2">
-                      {m.autorizadoPor && <div><p className="text-xs text-gray-500">Autorizó</p><p className="font-semibold text-gray-900 dark:text-white text-sm">{m.autorizadoPor}</p></div>}
-                      {m.realizadoPor && <div><p className="text-xs text-gray-500">Realizado por</p><p className="font-medium text-gray-900 dark:text-white text-sm">{m.realizadoPor}</p></div>}
+                  {/* Autorización */}
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <p className="text-xs text-gray-500">Autorizó el pago</p>
+                      <p className={`font-semibold text-sm ${m.autorizadoPor ? "text-gray-900 dark:text-white" : "text-gray-400 dark:text-gray-500 italic"}`}>{m.autorizadoPor ?? "—"}</p>
                     </div>
-                  )}
-                  {m.observacion && <p className="text-xs text-gray-500 italic">{m.observacion}</p>}
+                    <div>
+                      <p className="text-xs text-gray-500">Realizado por</p>
+                      <p className={`font-medium text-sm ${m.realizadoPor ? "text-gray-900 dark:text-white" : "text-gray-400 dark:text-gray-500 italic"}`}>{m.realizadoPor ?? "—"}</p>
+                    </div>
+                  </div>
+                  {/* Observación */}
+                  <div>
+                    <p className="text-xs text-gray-500 mb-1">Observación</p>
+                    <p className={`text-xs rounded p-2 ${m.observacion ? "bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300 italic" : "text-gray-400 dark:text-gray-500 italic"}`}>
+                      {m.observacion ?? "—"}
+                    </p>
+                  </div>
                 </div>
               </div>
             </>

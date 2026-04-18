@@ -9,10 +9,21 @@ import type { MetodoPago } from "@prisma/client";
 export interface RegistrarPagoContratoData {
   fecha: string;
   monto: number;
+  porcentajeAvance: number;
   metodoPago: MetodoPago;
   descripcion?: string;
   comprobante?: string;
   observacion?: string;
+  autorizadoPor?: string;
+  realizadoPor?: string;
+  nroComprobante?: string;
+  otroMetodoDetalle?: string;
+  nroCheque?: string;
+  bancoCheque?: string;
+  fechaEmisionCheque?: string;
+  fechaCobroCheque?: string;
+  nroTransaccion?: string;
+  bancoTransfer?: string;
 }
 
 export interface CrearContratoData {
@@ -64,7 +75,17 @@ export async function registrarPagoContrato(
         beneficiario: jefeCuadrilla,
         monto: data.monto,
         metodoPago: data.metodoPago,
-        observacion: data.observacion,
+        observacion: data.observacion || null,
+        autorizadoPor: data.autorizadoPor || null,
+        realizadoPor: data.realizadoPor || null,
+        nroComprobante: data.nroComprobante || null,
+        otroMetodoDetalle: data.otroMetodoDetalle || null,
+        nroCheque: data.nroCheque || null,
+        bancoCheque: data.bancoCheque || null,
+        fechaEmisionCheque: data.fechaEmisionCheque ? new Date(data.fechaEmisionCheque) : null,
+        fechaCobroCheque: data.fechaCobroCheque ? new Date(data.fechaCobroCheque) : null,
+        nroTransaccion: data.nroTransaccion || null,
+        bancoTransfer: data.bancoTransfer || null,
         proyectoId,
         contratoManoObraId: contratoId,
       },
