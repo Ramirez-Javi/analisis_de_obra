@@ -4,6 +4,7 @@ const fs = require("node:fs");
 const http = require("node:http");
 const net = require("node:net");
 const path = require("node:path");
+const { startPostgres, stopPostgres } = require("./postgres.cjs");
 
 let mainWindow;
 let serverProcess;
@@ -64,7 +65,7 @@ function createLoadingWindow() {
         <div style="text-align:center;max-width:520px;padding:32px;">
           <div style="letter-spacing:.2em;font-size:12px;text-transform:uppercase;color:#857255;">TEKOGA</div>
           <h1 style="margin:16px 0 8px;font-size:38px;">Iniciando aplicacion</h1>
-          <p style="margin:0;font-size:16px;line-height:1.6;color:#4b5563;">Se esta levantando el servidor interno de Next.js para cargar la interfaz de escritorio.</p>
+          <p style="margin:0;font-size:16px;line-height:1.6;color:#4b5563;">Se esta levantando la base de datos local y el servidor de la aplicacion. Este proceso puede tardar unos segundos la primera vez.</p>
         </div>
       </body>
     </html>
@@ -170,6 +171,9 @@ async function startInternalServer() {
     throw new Error(`No se encontro el servidor de Next empaquetado en ${serverScript}. Ejecuta npm run electron:build:win para regenerar dist-electron.`);
   }
 
+  // Arrancar PostgreSQL local antes que Next.js
+  const databaseUrl = await startPostgres(serverDir);
+
   const port = await getAvailablePort();
   const serverUrl = `http://127.0.0.1:${port}`;
   const nodePathEntries = [];
@@ -200,6 +204,7 @@ async function startInternalServer() {
       AUTH_TRUST_HOST: "1",
       NEXTAUTH_URL: serverUrl,
       AUTH_URL: serverUrl,
+      DATABASE_URL: databaseUrl,
       ELECTRON_RESOURCES_PATH: app.isPackaged
         ? process.resourcesPath
         : path.join(app.getAppPath(), "resources"),
@@ -246,10 +251,14 @@ app.on("window-all-closed", () => {
   }
 });
 
-app.on("before-quit", () => {
+app.on("before-quit", (event) => {
   if (serverProcess && !serverProcess.killed) {
     serverProcess.kill();
   }
+
+  // Detener PostgreSQL antes de salir (best-effort, previene quit hasta que termine)
+  event.preventDefault();
+  stopPostgres().finally(() => app.exit(0));
 });
 
 app.on("activate", () => {

@@ -9,6 +9,9 @@ const nextStandaloneDir = path.join(projectRoot, ".next", "standalone");
 const nextStaticDir = path.join(projectRoot, ".next", "static");
 const publicDir = path.join(projectRoot, "public");
 const prismaBinaryDir = path.join(projectRoot, "node_modules", ".prisma");
+const prismaMigrationsDir = path.join(projectRoot, "prisma", "migrations");
+const embeddedPgDir = path.join(projectRoot, "node_modules", "embedded-postgres");
+const embeddedPgPlatformDir = path.join(projectRoot, "node_modules", "@embedded-postgres");
 const stageDir = path.join(projectRoot, "dist-electron", "app");
 const envFiles = [
   ".env",
@@ -73,6 +76,14 @@ async function main() {
   await copyIfExists(nextStaticDir, path.join(stageDir, ".next", "static"));
   await copyIfExists(publicDir, path.join(stageDir, "public"));
   await copyIfExists(prismaBinaryDir, path.join(stageDir, "node_modules", ".prisma"));
+
+  // Copiar migraciones Prisma — el runner de migraciones local las necesita
+  await copyIfExists(prismaMigrationsDir, path.join(stageDir, "prisma", "migrations"));
+
+  // Copiar embedded-postgres y sus binarios de plataforma
+  // Quedan en resources/app/node_modules/ (en disco, no en asar)
+  await copyIfExists(embeddedPgDir, path.join(stageDir, "node_modules", "embedded-postgres"));
+  await copyIfExists(embeddedPgPlatformDir, path.join(stageDir, "node_modules", "@embedded-postgres"));
 
   for (const envFile of envFiles) {
     const sourcePath = path.join(projectRoot, envFile);
