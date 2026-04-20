@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { UsuariosManager } from "@/components/admin/UsuariosManager";
 import { AccesoOficinaCard } from "@/components/admin/AccesoOficinaCard";
 import { BackupCard } from "@/components/admin/BackupCard";
+import { ExportarZipButton } from "@/components/admin/ExportarZipButton";
 import { getSession } from "@/lib/session";
 import { redirect } from "next/navigation";
 import type { Metadata } from "next";
@@ -90,6 +91,10 @@ export default async function AdminUsuariosPage() {
 
         <div className="mb-8">
           <BackupCard ultimoBackupAt={ultimoBackupAt} />
+        </div>
+
+        <div className="mb-8">
+          <ExportarZipButton />
         </div>
 
         <UsuariosManager usuarios={usuarios} />
