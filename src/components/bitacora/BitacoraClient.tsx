@@ -14,6 +14,8 @@ import {
 } from "@/app/proyectos/[id]/bitacora/actions";
 import { getEmpresaConfig, openBrandedPrintWindow } from "@/lib/reportHeader";
 import { fmtFechaLargaConDia as fmtFecha, fmtFechaCorta as fmtFechaCort } from "@/lib/fmtFecha";
+import { usePagination } from "@/lib/usePagination";
+import { PaginationControls } from "@/components/shared/PaginationControls";
 
 // ─── Tipos locales ────────────────────────────────────────────
 type EntradaCompleta = {
@@ -710,6 +712,7 @@ function exportarCSV(entradas: EntradaCompleta[], proyectoNombre: string) {
 export function BitacoraClient({ proyectoId, proyectoNombre, entradas: initialEntradas, alertasStock }: Props) {
   const [entradas] = useState(initialEntradas);
   const [tab, setTab] = useState<"historial" | "nueva" | "stock">("historial");
+  const pag = usePagination(entradas, 20);
 
   const TABS = [
     { id: "historial" as const, label: "Historial", icon: BookOpen },
@@ -782,7 +785,16 @@ export function BitacoraClient({ proyectoId, proyectoNombre, entradas: initialEn
             </div>
           ) : (
             <div className="space-y-3">
-              {entradas.map((e) => <EntradaCard key={e.id} entrada={e} proyectoId={proyectoId} />)}
+              {pag.items.map((e) => <EntradaCard key={e.id} entrada={e} proyectoId={proyectoId} />)}
+              <PaginationControls
+                page={pag.page}
+                totalPages={pag.totalPages}
+                total={entradas.length}
+                pageSize={pag.pageSize}
+                onPage={pag.setPage}
+                onPageSize={pag.setPageSize}
+                threshold={20}
+              />
             </div>
           )}
         </div>

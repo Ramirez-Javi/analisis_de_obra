@@ -16,6 +16,8 @@ import {
 } from "@/app/proyectos/[id]/inventario/actions";
 import { getEmpresaConfig, openBrandedPrintWindow } from "@/lib/reportHeader";
 import { fmtFechaCorta as fmtFecha } from "@/lib/fmtFecha";
+import { usePagination } from "@/lib/usePagination";
+import { PaginationControls } from "@/components/shared/PaginationControls";
 // ─── Tipos (definidos localmente, sin importar desde @prisma/client) ─────────
 type MaterialSelect = { id: string; codigo: string; nombre: string; unidadMedida: { simbolo: string } };
 type ProveedorSelect = { id: string; razonSocial: string };
@@ -582,6 +584,7 @@ function TabBodega({
   const [form, setForm] = useState<Partial<RecepcionData>>({
     fechaRecepcion: new Date().toISOString().slice(0, 10),
   });
+  const pagBodega = usePagination(recepciones, 50);
 
   const set = (k: string, v: string | number) => setForm((p) => ({ ...p, [k]: v }));
 
@@ -660,7 +663,8 @@ function TabBodega({
       {recepciones.length === 0 ? (
         <p className="text-center py-10 text-sm text-gray-400">No hay materiales registrados en bodega.</p>
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700">
+        <div className="space-y-3">
+          <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700">
           <table className="w-full text-sm">
             <thead className="bg-gray-50 dark:bg-gray-800/60 text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">
               <tr>
@@ -673,7 +677,7 @@ function TabBodega({
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
-              {recepciones.map((r) => {
+              {pagBodega.items.map((r) => {
                 return (
                   <tr key={r.id} className="bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800/40">
                     <td className="px-4 py-3">
@@ -721,6 +725,16 @@ function TabBodega({
               })}
             </tbody>
           </table>
+          </div>
+          <PaginationControls
+            page={pagBodega.page}
+            totalPages={pagBodega.totalPages}
+            total={recepciones.length}
+            pageSize={pagBodega.pageSize}
+            onPage={pagBodega.setPage}
+            onPageSize={pagBodega.setPageSize}
+            threshold={50}
+          />
         </div>
       )}
 

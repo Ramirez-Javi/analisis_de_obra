@@ -11,6 +11,8 @@ import {
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
 import { getEmpresaConfig, openBrandedPrintWindow } from "@/lib/reportHeader";
 import { fmtFechaCorta as fmtFecha } from "@/lib/fmtFecha";
+import { usePagination } from "@/lib/usePagination";
+import { PaginationControls } from "@/components/shared/PaginationControls";
 import { crearMovimiento, eliminarMovimiento, actualizarMovimiento } from "@/app/proyectos/[id]/financiero/actions";
 import type { NuevoMovimientoData } from "@/app/proyectos/[id]/financiero/actions";
 import type { MovimientoFinanciero, Proveedor } from "@prisma/client";
@@ -789,7 +791,7 @@ export function FinancieroClient({ proyectoId, montoContrato, movimientos: initi
   }, [optimisticMovs]);
 
   // Aplicar filtro y búsqueda
-  const filas = useMemo(() => {
+  const filasFiltradas = useMemo(() => {
     return filasConSaldo.filter((m) => {
       const pasaTipo = filtroTipo === "TODOS" || m.tipo === filtroTipo;
       const q = busqueda.toLowerCase().trim();
@@ -797,6 +799,9 @@ export function FinancieroClient({ proyectoId, montoContrato, movimientos: initi
       return pasaTipo && pasaBusqueda;
     });
   }, [filasConSaldo, filtroTipo, busqueda]);
+
+  const pag = usePagination(filasFiltradas, 50);
+  const filas = pag.items;
 
   // Porcentajes sobre contrato
   const pctCobrado = montoContrato && montoContrato > 0
@@ -1140,14 +1145,14 @@ export function FinancieroClient({ proyectoId, montoContrato, movimientos: initi
             </select>
             {(filtroTipo !== "TODOS" || busqueda) && (
               <button
-                onClick={() => { setFiltroTipo("TODOS"); setBusqueda(""); }}
+                onClick={() => { setFiltroTipo("TODOS"); setBusqueda(""); pag.reset(); }}
                 className="text-xs text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 underline"
               >
                 Limpiar filtros
               </button>
             )}
             {(filtroTipo !== "TODOS" || busqueda) && (
-              <span className="text-xs text-gray-400">{filas.length} resultado{filas.length !== 1 ? "s" : ""}</span>
+              <span className="text-xs text-gray-400">{filasFiltradas.length} resultado{filasFiltradas.length !== 1 ? "s" : ""}</span>
             )}
           </div>
         )}
@@ -1242,6 +1247,17 @@ export function FinancieroClient({ proyectoId, montoContrato, movimientos: initi
                   )}
                 </tbody>
               </table>
+            </div>
+            <div className="px-4 pb-3">
+              <PaginationControls
+                page={pag.page}
+                totalPages={pag.totalPages}
+                total={filasFiltradas.length}
+                pageSize={pag.pageSize}
+                onPage={pag.setPage}
+                onPageSize={pag.setPageSize}
+                threshold={50}
+              />
             </div>
           </div>
         )}
