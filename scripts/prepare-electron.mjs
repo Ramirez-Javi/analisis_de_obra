@@ -90,7 +90,19 @@ async function main() {
     const targetPath = path.join(stageDir, envFile);
     await copyIfExists(sourcePath, targetPath);
   }
-}
+
+  // Eliminar DATABASE_URL de los .env copiados al stage.
+  // En el modo Electron, DATABASE_URL la provee postgres.cjs dinámicamente
+  // y se pasa como env var al proceso de Next.js. Dejarla aquí haría que
+  // el servidor intente conectar a Neon en vez del PostgreSQL local.
+  for (const envFile of envFiles) {
+    const targetPath = path.join(stageDir, envFile);
+    if (!(await pathExists(targetPath))) continue;
+    let content = await fs.readFile(targetPath, "utf-8");
+    // Reemplaza líneas que comiencen con DATABASE_URL (con o sin espacios y comillas)
+    content = content.replace(/^DATABASE_URL\s*=.*$/gm, "# DATABASE_URL set dynamically by Electron");
+    await fs.writeFile(targetPath, content, "utf-8");
+  }
 
 main().catch((error) => {
   console.error("[prepare-electron]", error);

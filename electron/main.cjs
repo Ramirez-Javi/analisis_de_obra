@@ -1,5 +1,6 @@
 const { app, BrowserWindow, dialog } = require("electron");
 const { spawn } = require("node:child_process");
+const crypto = require("node:crypto");
 const fs = require("node:fs");
 const http = require("node:http");
 const net = require("node:net");
@@ -37,6 +38,23 @@ function getServerDirectory() {
 
 function getAppTitle() {
   return "TEKOGA";
+}
+
+/**
+ * Devuelve el AUTH_SECRET para NextAuth.
+ * En el primer arranque genera uno aleatorio y lo persiste en userData.
+ * Así cada instalación tiene su propio secret sin necesidad de que el
+ * instalador lo incluya en texto plano.
+ */
+function getOrCreateAuthSecret() {
+  const secretPath = path.join(app.getPath("userData"), "auth_secret");
+  if (fs.existsSync(secretPath)) {
+    return fs.readFileSync(secretPath, "utf-8").trim();
+  }
+  const secret = crypto.randomBytes(32).toString("base64");
+  fs.mkdirSync(path.dirname(secretPath), { recursive: true });
+  fs.writeFileSync(secretPath, secret, { mode: 0o600 });
+  return secret;
 }
 
 function createLoadingWindow() {
@@ -173,6 +191,7 @@ async function startInternalServer() {
 
   // Arrancar PostgreSQL local antes que Next.js
   const databaseUrl = await startPostgres(serverDir);
+  const authSecret = getOrCreateAuthSecret();
 
   const port = await getAvailablePort();
   const serverUrl = `http://127.0.0.1:${port}`;
@@ -201,6 +220,7 @@ async function startInternalServer() {
       NODE_ENV: "production",
       NEXT_TELEMETRY_DISABLED: "1",
       PORT: String(port),
+      AUTH_SECRET: authSecret,
       AUTH_TRUST_HOST: "1",
       NEXTAUTH_URL: serverUrl,
       AUTH_URL: serverUrl,

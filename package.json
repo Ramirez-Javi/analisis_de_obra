@@ -80,7 +80,9 @@
     },
     "files": [
       "electron/**/*",
-      "package.json"
+      "package.json",
+      "!electron/node_modules/**",
+      "!node_modules/**"
     ],
     "extraResources": [
       {
@@ -96,6 +98,9 @@
       }
     ],
     "asar": true,
+    "asarUnpack": [
+      "**/*.node"
+    ],
     "win": {
       "icon": "build/tekoga.ico",
       "target": [
@@ -112,7 +117,8 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "TEKOGA"
+      "shortcutName": "TEKOGA",
+      "installerLanguages": ["Spanish"]
     }
   },
   "lint-staged": {
