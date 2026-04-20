@@ -63,6 +63,28 @@ vi.mock("@/lib/prisma", () => ({
       update: vi.fn(),
       delete: vi.fn(),
     },
+    rubroProyecto: {
+      findMany: vi.fn(),
+      findFirst: vi.fn(),
+    },
+    avanceRubro: {
+      findMany: vi.fn(),
+      create: vi.fn(),
+      delete: vi.fn(),
+    },
+    recepcionBodega: {
+      findMany: vi.fn(),
+      create: vi.fn(),
+      delete: vi.fn(),
+    },
+    conteoFisicoBodega: {
+      findMany: vi.fn(),
+      create: vi.fn(),
+      delete: vi.fn(),
+    },
+    asBuiltRegistro: {
+      count: vi.fn(),
+    },
     $transaction: vi.fn((ops) => Promise.all(ops)),
   },
 }));

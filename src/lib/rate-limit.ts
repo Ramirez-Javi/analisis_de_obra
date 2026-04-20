@@ -1,5 +1,8 @@
 /**
- * rate-limit.ts — Limiter de intentos de login por clave (email o IP).
+ * rate-limit.ts — Limiter de intentos de login por IP del cliente.
+ * Clave: IP extraída de x-forwarded-for / x-real-ip; fallback al email si la IP
+ * no está disponible. Limitar por IP evita la enumeración de usuarios
+ * (un atacante no puede rotar de cuenta en cuenta desde la misma dirección).
  * Node.js runtime únicamente (authorize callback de auth.ts).
  * Para deployments multi-instancia o producción cloud, reemplazar con Redis.
  */

@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useCallback, useMemo, useRef, useEffect } from "react";
+import { useState, useCallback, useMemo, useRef, useEffect, useTransition } from "react";
 import Link from "next/link";
+import { toast } from "sonner";
 import { ArrowLeft, Calculator, PackageOpen, Save, Check, List, HardHat, Package, X, Delete } from "lucide-react";
 import type { RubroProyecto, InsumoRubro, RubroMaestroMock } from "./types";
 import {
@@ -15,6 +16,7 @@ import { PresupuestoToolbar } from "./PresupuestoToolbar";
 import { AsignarProyectoWidget } from "@/components/shared/AsignarProyectoWidget";
 import type { ProyectoSimple } from "@/app/actions/proyectos";
 import type { RubroProyectoDB } from "@/app/actions/init-modulos";
+import { guardarPresupuesto } from "@/app/proyectos/[id]/presupuesto/actions";
 
 // ── Tarjeta totalizadora ──────────────────────────────────────
 interface TotCardProps {
@@ -258,8 +260,10 @@ interface PresupuestoClientProps {
   stickyTop?: string;
   /** Proyectos disponibles para asignar (solo relevante en modo standalone) */
   proyectosDisponibles?: ProyectoSimple[];
-  /** Rubros precargados desde DB (se usan solo si localStorage está vacío para este proyecto) */
+  /** Rubros precargados desde DB */
   initialRubros?: RubroProyectoDB[];
+  /** Rubros maestros personalizados de la empresa para el selector del toolbar */
+  rubrosMaestrosDB?: RubroMaestroMock[];
 }
 
 export function PresupuestoClient({
@@ -269,27 +273,33 @@ export function PresupuestoClient({
   stickyTop = "top-0",
   proyectosDisponibles = [],
   initialRubros = [],
+  rubrosMaestrosDB = [],
 }: PresupuestoClientProps) {
+  const [isPending, startTransition] = useTransition();
   const STORAGE_KEY = `presupuesto_${proyecto?.id ?? "standalone"}`;
 
   const [rubros, setRubros] = useState<RubroProyecto[]>(() => {
-    try {
-      if (typeof window !== "undefined") {
-        const raw = localStorage.getItem(`presupuesto_${proyecto?.id ?? "standalone"}`);
-        if (raw && raw !== "[]") return JSON.parse(raw) as RubroProyecto[];
-      }
-    } catch {}
-    // Si no hay localStorage y venimos con datos de DB, usarlos
+    // Modo standalone sin proyecto: leer localStorage para persistencia local
+    if (!proyecto?.id) {
+      try {
+        if (typeof window !== "undefined") {
+          const raw = localStorage.getItem("presupuesto_standalone");
+          if (raw && raw !== "[]") return JSON.parse(raw) as RubroProyecto[];
+        }
+      } catch {}
+    }
     return initialRubros as unknown as RubroProyecto[];
   });
 
   const [savedKey, setSavedKey] = useState<string>(() => {
-    try {
-      if (typeof window !== "undefined") {
-        const raw = localStorage.getItem(`presupuesto_${proyecto?.id ?? "standalone"}`);
-        if (raw && raw !== "[]") return raw;
-      }
-    } catch {}
+    if (!proyecto?.id) {
+      try {
+        if (typeof window !== "undefined") {
+          const raw = localStorage.getItem("presupuesto_standalone");
+          if (raw && raw !== "[]") return raw;
+        }
+      } catch {}
+    }
     return JSON.stringify(initialRubros);
   });
 
@@ -352,31 +362,50 @@ export function PresupuestoClient({
   const rubrosSerialized = useMemo(() => JSON.stringify(rubros), [rubros]);
   const isDirty = rubrosSerialized !== savedKey;
 
-  // Auto-seed localStorage from DB data on first load so that other modules
-  // (e.g. Cronograma) can read the rubros even if the user has never manually saved.
-  useEffect(() => {
-    if (initialRubros.length === 0) return;
-    try {
-      const existing = localStorage.getItem(STORAGE_KEY);
-      if (!existing || existing === "[]") {
-        const seeded = JSON.stringify(initialRubros);
-        localStorage.setItem(STORAGE_KEY, seeded);
-        setSavedKey(seeded);
-      }
-    } catch {}
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // run only on mount
-
   function handleSave() {
-    setSaveState("saving");
-    try {
-      localStorage.setItem(STORAGE_KEY, rubrosSerialized);
-      setSavedKey(rubrosSerialized);
-      setSaveState("saved");
-      setTimeout(() => setSaveState("idle"), 2500);
-    } catch {
-      setSaveState("idle");
+    // Modo standalone sin proyecto: persistir en localStorage
+    if (!proyecto?.id) {
+      setSaveState("saving");
+      try {
+        localStorage.setItem(STORAGE_KEY, rubrosSerialized);
+        setSavedKey(rubrosSerialized);
+        setSaveState("saved");
+        setTimeout(() => setSaveState("idle"), 2500);
+      } catch {
+        setSaveState("idle");
+      }
+      return;
     }
+    setSaveState("saving");
+    startTransition(async () => {
+      try {
+        const result = await guardarPresupuesto(proyecto.id, rubros as unknown as RubroProyectoDB[]);
+        if (!result.ok) {
+          toast.error(result.error ?? "Error al guardar el presupuesto");
+          setSaveState("idle");
+          return;
+        }
+        if (result.rubros) {
+          const updated = result.rubros as unknown as RubroProyecto[];
+          setRubros(updated);
+          const key = JSON.stringify(updated);
+          setSavedKey(key);
+          // Notificar a CronogramaClient en otras pestañas
+          try {
+            const bc = new BroadcastChannel(`presupuesto_sync_${proyecto.id}`);
+            bc.postMessage(key);
+            bc.close();
+          } catch {}
+        } else {
+          setSavedKey(rubrosSerialized);
+        }
+        setSaveState("saved");
+        setTimeout(() => setSaveState("idle"), 2500);
+      } catch {
+        toast.error("Error de conexión al guardar");
+        setSaveState("idle");
+      }
+    });
   }
 
   // ── Acciones sobre rubros ──────────────────────────────────
@@ -584,14 +613,13 @@ export function PresupuestoClient({
               {!proyecto && proyectosDisponibles.length > 0 && (
                 <AsignarProyectoWidget
                   proyectos={proyectosDisponibles}
-                  mode="copy"
-                  storagePrefix="presupuesto"
+                  mode="nav"
                   moduloPath="presupuesto"
                 />
               )}
               <button
                 onClick={handleSave}
-                disabled={saveState === "saving" || (saveState !== "saved" && !isDirty)}
+                disabled={saveState === "saving" || isPending || (saveState !== "saved" && !isDirty)}
                 className={`shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
                   saveState === "saved"
                     ? "dark:bg-teal-500/20 bg-teal-50 dark:text-teal-400 text-teal-600 border dark:border-teal-500/20 border-teal-200"
@@ -678,7 +706,7 @@ export function PresupuestoClient({
         {activeTab === "rubros" && (
           <>
             <PresupuestoToolbar
-              rubrosMaestros={RUBROS_MAESTROS_MOCK}
+              rubrosMaestros={[...RUBROS_MAESTROS_MOCK, ...rubrosMaestrosDB]}
               onAgregarRubro={handleAgregarRubro}
               onCrearPersonalizado={handleCrearPersonalizado}
             />

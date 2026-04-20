@@ -19,8 +19,12 @@ const ACCION_LABELS: Record<AccionAudit, string> = {
   PROYECTO_CREADO:           "Proyecto creado",
   PROYECTO_EDITADO:          "Proyecto editado",
   PROYECTO_ELIMINADO:        "Proyecto eliminado",
+  PROYECTO_ARCHIVADO:        "Proyecto archivado",
+  PROYECTO_RESTAURADO:       "Proyecto restaurado",
+  PROYECTO_ELIMINADO_PERMANENTE: "Proyecto eliminado permanentemente",
   MOVIMIENTO_CREADO:         "Movimiento financiero creado",
   MOVIMIENTO_ELIMINADO:      "Movimiento financiero eliminado",
+  BACKUP_DESCARGADO:         "Backup descargado",
 };
 
 const ACCION_COLOR: Partial<Record<AccionAudit, string>> = {

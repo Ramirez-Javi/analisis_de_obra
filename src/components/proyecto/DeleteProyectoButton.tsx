@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Trash2 } from "lucide-react";
+import { Archive } from "lucide-react";
 import { eliminarProyecto } from "@/app/proyectos/actions";
 
 interface Props {
@@ -16,8 +16,8 @@ export function DeleteProyectoButton({ id, nombre }: Props) {
   if (confirming) {
     return (
       <div className="flex items-center gap-1.5" onClick={(e) => e.preventDefault()}>
-        <span className="text-[11px] dark:text-red-400 text-red-600 font-medium">
-          ¿Eliminar?
+        <span className="text-[11px] dark:text-amber-400 text-amber-600 font-medium">
+          ¿Archivar?
         </span>
         <button
           disabled={isPending}
@@ -27,9 +27,9 @@ export function DeleteProyectoButton({ id, nombre }: Props) {
               await eliminarProyecto(id);
             });
           }}
-          className="text-[11px] px-2 py-0.5 rounded dark:bg-red-500/20 bg-red-100 dark:text-red-300 text-red-700 hover:bg-red-500/30 transition-colors disabled:opacity-50"
+          className="text-[11px] px-2 py-0.5 rounded dark:bg-amber-500/20 bg-amber-100 dark:text-amber-300 text-amber-700 hover:bg-amber-500/30 transition-colors disabled:opacity-50"
         >
-          {isPending ? "Eliminando…" : "Sí"}
+          {isPending ? "Archivando…" : "Sí"}
         </button>
         <button
           onClick={(e) => {
@@ -46,14 +46,14 @@ export function DeleteProyectoButton({ id, nombre }: Props) {
 
   return (
     <button
-      title={`Eliminar ${nombre}`}
+      title={`Archivar ${nombre}`}
       onClick={(e) => {
         e.preventDefault();
         setConfirming(true);
       }}
-      className="p-1.5 rounded-lg dark:text-slate-500 text-slate-400 dark:hover:text-red-400 hover:text-red-500 dark:hover:bg-red-500/10 hover:bg-red-50 transition-colors"
+      className="p-1.5 rounded-lg dark:text-slate-500 text-slate-400 dark:hover:text-amber-400 hover:text-amber-500 dark:hover:bg-amber-500/10 hover:bg-amber-50 transition-colors"
     >
-      <Trash2 size={14} />
+      <Archive size={14} />
     </button>
   );
 }

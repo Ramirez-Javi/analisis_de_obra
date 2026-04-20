@@ -165,15 +165,12 @@ export async function eliminarProyecto(
   if (!session?.user) return { ok: false, error: "No autorizado." };
 
   try {
-    // Row-level security: verificar ownership antes de eliminar
     const userId = (session.user as { id?: string }).id!;
     const userRecord = await prisma.usuario.findUnique({
       where: { id: userId },
       select: { empresaId: true },
     });
     const sessionEmpresaId = userRecord?.empresaId;
-
-    // Sin empresa asignada = sin acceso a proyectos
     if (!sessionEmpresaId) {
       return { ok: false, error: "No autorizado. El usuario no tiene empresa asignada." };
     }
@@ -184,19 +181,104 @@ export async function eliminarProyecto(
     });
     if (!proyecto) return { ok: false, error: "Proyecto no encontrado." };
 
-    // Delete incluye empresaId como guard adicional de seguridad
-    await prisma.proyecto.delete({ where: { id, empresaId: sessionEmpresaId } });
-    const { revalidatePath } = await import("next/cache");
+    // Soft delete: marcar como archivado en lugar de borrar permanentemente
+    await prisma.proyecto.update({
+      where: { id, empresaId: sessionEmpresaId },
+      data: { archivedAt: new Date() },
+    });
 
+    const { revalidatePath } = await import("next/cache");
     const actorId = (session.user as { id?: string }).id;
     const actorEmail = session.user.email ?? undefined;
-    audit({ accion: "PROYECTO_ELIMINADO", entidad: "Proyecto", entidadId: id, userId: actorId, userEmail: actorEmail }).catch(() => {});
+    audit({ accion: "PROYECTO_ARCHIVADO", entidad: "Proyecto", entidadId: id, userId: actorId, userEmail: actorEmail }).catch(() => {});
 
     revalidatePath("/proyectos");
     return { ok: true };
   } catch (err) {
     logger.error("proyectos", "eliminarProyecto falló", { err });
-    return { ok: false, error: "No se pudo eliminar el proyecto." };
+    return { ok: false, error: "No se pudo archivar el proyecto." };
+  }
+}
+
+export async function restaurarProyecto(
+  id: string
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const session = await auth();
+  if (!session?.user) return { ok: false, error: "No autorizado." };
+
+  try {
+    const userId = (session.user as { id?: string }).id!;
+    const userRecord = await prisma.usuario.findUnique({
+      where: { id: userId },
+      select: { empresaId: true },
+    });
+    const sessionEmpresaId = userRecord?.empresaId;
+    if (!sessionEmpresaId) {
+      return { ok: false, error: "No autorizado." };
+    }
+
+    const proyecto = await prisma.proyecto.findFirst({
+      where: { id, empresaId: sessionEmpresaId },
+      select: { id: true },
+    });
+    if (!proyecto) return { ok: false, error: "Proyecto no encontrado." };
+
+    await prisma.proyecto.update({
+      where: { id },
+      data: { archivedAt: null },
+    });
+
+    const { revalidatePath } = await import("next/cache");
+    const actorId = (session.user as { id?: string }).id;
+    const actorEmail = session.user.email ?? undefined;
+    audit({ accion: "PROYECTO_RESTAURADO", entidad: "Proyecto", entidadId: id, userId: actorId, userEmail: actorEmail }).catch(() => {});
+
+    revalidatePath("/proyectos");
+    return { ok: true };
+  } catch (err) {
+    logger.error("proyectos", "restaurarProyecto falló", { err });
+    return { ok: false, error: "No se pudo restaurar el proyecto." };
+  }
+}
+
+export async function eliminarProyectoPermanente(
+  id: string
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const session = await auth();
+  if (!session?.user) return { ok: false, error: "No autorizado." };
+
+  try {
+    const userId = (session.user as { id?: string }).id!;
+    const userRecord = await prisma.usuario.findUnique({
+      where: { id: userId },
+      select: { empresaId: true, rol: true },
+    });
+    const sessionEmpresaId = userRecord?.empresaId;
+    if (!sessionEmpresaId) {
+      return { ok: false, error: "No autorizado." };
+    }
+
+    // Solo se pueden eliminar permanentemente proyectos que ya están en la papelera
+    const proyecto = await prisma.proyecto.findFirst({
+      where: { id, empresaId: sessionEmpresaId, archivedAt: { not: null } },
+      select: { id: true },
+    });
+    if (!proyecto) {
+      return { ok: false, error: "Proyecto no encontrado en la papelera." };
+    }
+
+    await prisma.proyecto.delete({ where: { id, empresaId: sessionEmpresaId } });
+
+    const { revalidatePath } = await import("next/cache");
+    const actorId = (session.user as { id?: string }).id;
+    const actorEmail = session.user.email ?? undefined;
+    audit({ accion: "PROYECTO_ELIMINADO_PERMANENTE", entidad: "Proyecto", entidadId: id, userId: actorId, userEmail: actorEmail }).catch(() => {});
+
+    revalidatePath("/proyectos");
+    return { ok: true };
+  } catch (err) {
+    logger.error("proyectos", "eliminarProyectoPermanente falló", { err });
+    return { ok: false, error: "No se pudo eliminar el proyecto permanentemente." };
   }
 }
 

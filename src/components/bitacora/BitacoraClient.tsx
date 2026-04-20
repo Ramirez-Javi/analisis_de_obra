@@ -4,14 +4,15 @@ import { useState, useTransition } from "react";
 import { toast } from "sonner";
 import {
   BookOpen, Plus, Trash2, ChevronDown, ChevronUp,
-  Sun, Cloud, CloudRain, Wind, Thermometer,
+  Sun, Cloud, CloudRain, Wind,
   Users, Wrench, AlertTriangle, CheckCircle2, Lightbulb, ShieldAlert,
-  ExternalLink, Clock, Calendar, User, BarChart3, Download,
+  ExternalLink, Clock, User, BarChart3, Download, Printer, FileText,
 } from "lucide-react";
 import {
   crearEntrada, eliminarEntrada,
   type EntradaData, type RubroData, type PersonalData,
 } from "@/app/proyectos/[id]/bitacora/actions";
+import { getEmpresaConfig, openBrandedPrintWindow } from "@/lib/reportHeader";
 
 // ─── Tipos locales ────────────────────────────────────────────
 type EntradaCompleta = {
@@ -82,9 +83,9 @@ function FodaField({ label, icon: Icon, color, value, onChange, placeholder }: {
 }
 
 // ─── Formulario nueva entrada ─────────────────────────────────
-function FormNuevaEntrada({ proyectoId, onCreada }: {
+function FormNuevaEntrada({ proyectoId }: {
   proyectoId: string;
-  onCreada: (e: EntradaCompleta) => void;
+  onCreada?: (e: EntradaCompleta) => void;
 }) {
   const [pending, start] = useTransition();
   const [abierto, setAbierto] = useState(false);
@@ -641,6 +642,49 @@ function AlertaRow({ a }: { a: AlertaStock }) {
   );
 }
 
+// ─── Imprimir / PDF Bitácora ──────────────────────────────────
+function imprimirBitacora(entradas: EntradaCompleta[], proyectoNombre: string, proyectoId: string) {
+  const empresa = getEmpresaConfig(proyectoId);
+  let body = `<h2>Bitácora de Obra</h2>`;
+  for (const e of entradas) {
+    const totalPersonal = e.personalDelDia.length;
+    const totalHoras = e.personalDelDia.reduce((s, p) => s + (p.horasTrabajadas ?? 0), 0);
+    body +=
+      `<h3 style="margin-top:16pt;border-bottom:1px solid #e5e7eb;padding-bottom:4pt">${fmtFecha(e.fecha)}</h3>` +
+      `<table><tbody>` +
+      (e.turno ? `<tr><th style="width:22%;text-align:left">Turno</th><td>${e.turno}</td></tr>` : "") +
+      (e.clima ? `<tr><th style="width:22%;text-align:left">Clima</th><td>${e.clima}${e.temperatura ? ` – ${e.temperatura}°C` : ""}</td></tr>` : "") +
+      (e.responsableFirma ? `<tr><th style="width:22%;text-align:left">Responsable</th><td>${e.responsableFirma}</td></tr>` : "") +
+      `<tr><th style="width:22%;text-align:left;vertical-align:top">Descripción</th><td>${e.descripcionGeneral}</td></tr>`;
+    if (e.rubrosDelDia.length > 0) {
+      const rubros = e.rubrosDelDia.map((r) =>
+        `${r.descripcion}${r.cantidad ? ` (${r.cantidad}${r.unidad ?? ""})` : ""}${r.avancePct ? ` – ${r.avancePct}%` : ""}`
+      ).join("; ");
+      body += `<tr><th style="width:22%;text-align:left;vertical-align:top">Rubros del día</th><td>${rubros}</td></tr>`;
+    }
+    if (totalPersonal > 0) {
+      const personal = e.personalDelDia.map((p) =>
+        `${p.nombre}${p.categoria ? ` (${p.categoria})` : ""}${p.horasTrabajadas ? ` – ${p.horasTrabajadas}h` : ""}`
+      ).join("; ");
+      body += `<tr><th style="width:22%;text-align:left;vertical-align:top">Personal (${totalPersonal})</th><td>${personal}<br><span style="font-size:8pt;color:#6b7280">${totalHoras} horas totales de cuadrilla</span></td></tr>`;
+    }
+    if (e.aspectosPositivos) body += `<tr><th style="width:22%;text-align:left;vertical-align:top">Positivos</th><td style="color:#065f46">${e.aspectosPositivos}</td></tr>`;
+    if (e.aspectosNegativos) body += `<tr><th style="width:22%;text-align:left;vertical-align:top">Negativos</th><td style="color:#991b1b">${e.aspectosNegativos}</td></tr>`;
+    if (e.oportunidades) body += `<tr><th style="width:22%;text-align:left;vertical-align:top">Oportunidades</th><td style="color:#1e40af">${e.oportunidades}</td></tr>`;
+    if (e.amenazas) body += `<tr><th style="width:22%;text-align:left;vertical-align:top">Amenazas</th><td style="color:#92400e">${e.amenazas}</td></tr>`;
+    if (e.observaciones) body += `<tr><th style="width:22%;text-align:left;vertical-align:top">Observaciones</th><td>${e.observaciones}</td></tr>`;
+    if (e.enlaceFotos) body += `<tr><th style="width:22%;text-align:left">Fotos</th><td><a href="${e.enlaceFotos}">${e.enlaceFotos}</a></td></tr>`;
+    body += `</tbody></table>`;
+  }
+  openBrandedPrintWindow(
+    `Bitácora – ${proyectoNombre}`,
+    `Bitácora de Obra`,
+    `Proyecto: ${proyectoNombre} · ${entradas.length} entrada${entradas.length !== 1 ? "s" : ""}`,
+    body,
+    empresa,
+  );
+}
+
 // ─── Exportar CSV ─────────────────────────────────────────────
 function exportarCSV(entradas: EntradaCompleta[], proyectoNombre: string) {
   const filas: string[] = [
@@ -715,10 +759,20 @@ export function BitacoraClient({ proyectoId, proyectoNombre, entradas: initialEn
               {entradas.length === 0 ? "No hay entradas registradas." : `${entradas.length} entrada${entradas.length !== 1 ? "s" : ""} de bitácora`}
             </p>
             {entradas.length > 0 && (
-              <button onClick={() => exportarCSV(entradas, proyectoNombre)}
-                className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
-                <Download className="w-3.5 h-3.5" /> Exportar CSV
-              </button>
+              <div className="flex items-center gap-2">
+                <button onClick={() => exportarCSV(entradas, proyectoNombre)}
+                  className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+                  <Download className="w-3.5 h-3.5" /> CSV
+                </button>
+                <button onClick={() => imprimirBitacora(entradas, proyectoNombre, proyectoId)}
+                  className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
+                  <FileText className="w-3.5 h-3.5" /> PDF
+                </button>
+                <button onClick={() => imprimirBitacora(entradas, proyectoNombre, proyectoId)}
+                  className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+                  <Printer className="w-3.5 h-3.5" /> Imprimir
+                </button>
+              </div>
             )}
           </div>
           {entradas.length === 0 ? (

@@ -98,6 +98,10 @@ model RubroMaestro {
   categoriaId    String?
   categoria      CategoriaRubro? @relation(fields: [categoriaId], references: [id])
 
+  /// null = rubro del sistema/global; non-null = rubro creado por esta empresa
+  empresaId    String?
+  empresa      Empresa? @relation(fields: [empresaId], references: [id], onDelete: SetNull)
+
   // La receta maestra: lista de materiales y mano de obra para 1 unidad de este rubro
   recetaDetalle RecetaMaestraDetalle[]
 
@@ -107,6 +111,7 @@ model RubroMaestro {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@index([empresaId])
   @@map("rubro_maestro")
 }
 
@@ -147,9 +152,13 @@ model Empresa {
   pais      String?
   logoUrl   String? // URL o path relativo del logo
 
+  /// Fecha del último backup descargado por el admin
+  ultimoBackupAt DateTime?
+
   proyectos   Proyecto[]
   usuarios    Usuario[]
   proveedores Proveedor[]
+  rubrosMaestros RubroMaestro[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -230,6 +239,9 @@ model Proyecto {
     // Módulo 10: Bitácora de Obra
     bitacoraEntradas       BitacoraEntrada[]
 
+  // Control interno de bodega (Módulo 9B)
+  conteosFisicos         ConteoFisicoBodega[]
+
   // Campo access
   campoAccesos           CampoAcceso[]
   formaPago            String?  // Ej: "Anticipo 30% + cuotas mensuales"
@@ -238,10 +250,14 @@ model Proyecto {
   responsableObra      String?  // Nombre del Director/Responsable de Obra
   contactoPropietario  String?  // Teléfono o email de referencia rápida
 
+  /// null = activo; non-null = archivado (soft delete). Filtrar WHERE archivedAt IS NULL en listas normales.
+  archivedAt  DateTime?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([empresaId])
+  @@index([archivedAt])
   @@index([estado])
   @@map("proyecto")
 }
@@ -357,6 +373,9 @@ model RubroProyecto {
 
   // Registros de instalación as-built vinculados a este rubro
   asBuiltRegistros AsBuiltRegistro[]
+
+  // Avances físicos medidos en campo (Módulo 2B)
+  avancesRubro AvanceRubro[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -781,6 +800,54 @@ model RecepcionBodega {
   @@map("recepcion_bodega")
 }
 
+// ============================================================
+// MÓDULO 2B — CONTROL DE AVANCE FÍSICO POR RUBRO
+// ============================================================
+
+/// Registro incremental de avance físico en campo
+/// REGLA: cada entrada es INCREMENTAL — el sistema suma para obtener el total
+/// consumoTeorico = totalEjecutado × Insumo.cantidad × (1 + porcPerdida/100)
+model AvanceRubro {
+  id                String        @id @default(cuid())
+  cantidadEjecutada Float         // Cantidad ejecutada en esta medición (incremental)
+  fecha             DateTime      // Fecha de la medición en campo
+  nota              String?       // Nota del fiscal o residente de obra
+
+  rubroProyectoId   String
+  rubroProyecto     RubroProyecto @relation(fields: [rubroProyectoId], references: [id], onDelete: Cascade)
+
+  creadoEn          DateTime      @default(now())
+
+  @@index([rubroProyectoId])
+  @@map("avance_rubro")
+}
+
+// ============================================================
+// MÓDULO 9B — CONTROL INTERNO DE BODEGA
+// ============================================================
+
+/// Conteo físico presencial de materiales en bodega
+/// Sistema INTERNO — no visible en dossiers del cliente (As-Built)
+/// varianza = conteoFisico − (recibidoBodega − consumoTeorico)
+/// Varianza negativa = alerta de posible faltante/robo/desperdicio excesivo
+model ConteoFisicoBodega {
+  id             String   @id @default(cuid())
+  materialNombre String   // Nombre del material (snapshot del insumo)
+  unidad         String   // Unidad de medida
+  cantidad       Float    // Cantidad contada físicamente en bodega
+  fecha          DateTime // Fecha del conteo presencial
+  nota           String?  // Observaciones del responsable de bodega
+
+  proyectoId String
+  proyecto   Proyecto @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
+
+  creadoEn DateTime @default(now())
+
+  @@index([proyectoId])
+  @@index([proyectoId, materialNombre])
+  @@map("conteo_fisico_bodega")
+}
+
 /// Registro de instalación As-Built: cruza ambiente con lote de material
 /// Es la "Data Cruda" para Facility Management
 model AsBuiltRegistro {
@@ -1115,8 +1182,12 @@ enum AccionAudit {
   PROYECTO_CREADO
   PROYECTO_EDITADO
   PROYECTO_ELIMINADO
+  PROYECTO_ARCHIVADO
+  PROYECTO_RESTAURADO
+  PROYECTO_ELIMINADO_PERMANENTE
   MOVIMIENTO_CREADO
   MOVIMIENTO_ELIMINADO
+  BACKUP_DESCARGADO
 }
 
 /// Registro inmutable de auditoría de seguridad

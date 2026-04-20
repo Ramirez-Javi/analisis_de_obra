@@ -27,8 +27,13 @@ export async function POST(req: NextRequest) {
 
     const { email, password } = parsed.data;
 
-    // Rate limiting — misma clave que auth.ts para compartir contadores
-    const rl = checkRateLimit(email);
+    // Rate limiting por IP — misma lógica que auth.ts para compartir contadores
+    const clientIp =
+      req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
+      req.headers.get("x-real-ip") ??
+      null;
+    const rlKey = clientIp ?? email;
+    const rl = checkRateLimit(rlKey);
     if (!rl.allowed) {
       return NextResponse.json({ valid: false, totpRequired: false }, { status: 429 });
     }

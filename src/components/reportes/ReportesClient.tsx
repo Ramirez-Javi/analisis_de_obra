@@ -90,6 +90,8 @@ export interface ReportesClientProps {
   proyecto?: ProyectoReporte;
   backHref?: string;
   stickyTop?: string;
+  /** Rubros del presupuesto cargados desde DB (reemplaza la lectura de localStorage) */
+  initialRubros?: import("@/app/actions/init-modulos").RubroProyectoDB[];
 }
 
 type Tab = "config" | "cliente" | "profesional" | "cronograma" | "personal" | "logistica";
@@ -375,7 +377,6 @@ function printGantt(
   const totalTabW  = 727;
   const maxGridW   = totalTabW - nameW - datesW - pctW;
   const DAY_W      = maxGridW / totalDays; // exact — no floor, fills 100%
-  const totalGridW = maxGridW;
 
   // Build day array
   const allDaysPrint = Array.from({ length: totalDays }, (_, i) => {
@@ -1931,6 +1932,7 @@ export default function ReportesClient({
   proyecto,
   backHref = "/",
   stickyTop = "top-0",
+  initialRubros = [],
 }: ReportesClientProps) {
   const proyectoId = proyecto?.id ?? "standalone";
 
@@ -2003,7 +2005,7 @@ export default function ReportesClient({
     const rawMonto = localStorage.getItem(`reportes_monto_${proyectoId}`);
     if (rawMonto) newMonto = Number(rawMonto);
 
-    const rawRubros = localStorage.getItem(`presupuesto_${proyectoId}`);
+    const rawRubros = initialRubros.length > 0 ? JSON.stringify(initialRubros) : null;
     if (rawRubros) try { newRubros = JSON.parse(rawRubros); } catch { /* noop */ }
 
     const rawCronograma = localStorage.getItem(`cronograma_${proyectoId}`);
@@ -2015,7 +2017,6 @@ export default function ReportesClient({
     const rawLogistica = localStorage.getItem(`logistica_${proyectoId}`);
     if (rawLogistica) try { newLogistica = JSON.parse(rawLogistica); } catch { /* noop */ }
 
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setConfig({
       empresa: newEmpresa,
       montoContrato: newMonto,
@@ -2025,6 +2026,7 @@ export default function ReportesClient({
       logisticaCostos: newLogistica,
       loaded: true,
     });
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- initialRubros viene del servidor, no cambia tras el montaje
   }, [proyectoId, proyectoEmpresa]);
 
   // Persist empresa config when it changes
@@ -2081,7 +2083,7 @@ export default function ReportesClient({
     } else if (tab === "logistica") {
       printLogistica(logisticaCostos, empresaBase, pNombre, pCodigo);
     }
-  }, [tab, empresa, proyecto, cronogramaRubros, personalContratos, logisticaCostos]);
+  }, [tab, empresa, proyecto, cronogramaRubros, personalContratos, logisticaCostos, montoContrato]);
 
   const tabs: { key: Tab; label: string; icon: React.ElementType }[] = [
     { key: "config", label: "Configuración", icon: Settings },

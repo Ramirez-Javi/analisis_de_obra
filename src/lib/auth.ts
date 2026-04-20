@@ -30,8 +30,15 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
         const { email, password } = parsed.data;
 
-        // Rate limiting por email — máx. 5 intentos en 15 minutos
-        const rl = checkRateLimit(email);
+        // Rate limiting por IP — máx. 5 intentos en 15 minutos
+        // Usar IP como clave evita la enumeración de usuarios: un atacante
+        // no puede rotar entre diferentes cuentas desde la misma dirección.
+        const clientIp =
+          request?.headers?.get("x-forwarded-for")?.split(",")[0]?.trim() ??
+          request?.headers?.get("x-real-ip") ??
+          null;
+        const rlKey = clientIp ?? email;
+        const rl = checkRateLimit(rlKey);
         if (!rl.allowed) {
           const minLeft = Math.ceil((rl.remainingMs ?? 0) / 60_000);
           throw new Error(
@@ -76,13 +83,10 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           }
 
           // Login exitoso — resetear contador
-          resetRateLimit(email);
+          resetRateLimit(rlKey);
 
           // Capturar IP y UserAgent para el historial de sesiones
-          const ip =
-            request?.headers?.get("x-forwarded-for")?.split(",")[0]?.trim() ??
-            request?.headers?.get("x-real-ip") ??
-            null;
+          const ip = clientIp;
           const userAgent = request?.headers?.get("user-agent") ?? null;
 
           // Registrar inicio de sesión en historial (non-blocking)

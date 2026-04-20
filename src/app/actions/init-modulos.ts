@@ -85,6 +85,45 @@ export async function cargarRubrosPresupuesto(
   }));
 }
 
+/**
+ * Carga los RubroMaestro personalizados de la empresa (empresaId non-null)
+ * para mostrarlos en el selector del presupuesto junto al catálogo global.
+ */
+export async function cargarRubrosMaestrosEmpresa(): Promise<
+  { id: string; codigo: string; categoria: string; nombre: string; unidad: string; insumos: { id: string; nombre: string; unidad: string; rendimiento: number; porcPerdida: number; precioUnitario: number; esManodeObra: boolean }[] }[]
+> {
+  const session = await getSession();
+  if (!session?.user) return [];
+  const empresaId = (session.user as { empresaId?: string }).empresaId;
+  if (!empresaId) return [];
+
+  const maestros = await prisma.rubroMaestro.findMany({
+    where: { empresaId, activo: true },
+    orderBy: { nombre: "asc" },
+    include: {
+      unidadMedida: true,
+      recetaDetalle: { include: { unidadMedida: true } },
+    },
+  });
+
+  return maestros.map((m) => ({
+    id: m.id,
+    codigo: m.codigo,
+    categoria: "Mis Rubros Personalizados",
+    nombre: m.nombre,
+    unidad: m.unidadMedida.nombre,
+    insumos: m.recetaDetalle.map((d) => ({
+      id: d.id,
+      nombre: d.descripcionMO ?? "",
+      unidad: d.unidadMedida?.nombre ?? "u",
+      rendimiento: d.cantidad,
+      porcPerdida: d.porcPerdida,
+      precioUnitario: 0, // El usuario actualiza precios al usar el rubro
+      esManodeObra: d.esManodeObra,
+    })),
+  }));
+}
+
 // ─────────────────────────────────────────────────────────────
 // 2. MANO DE OBRA — tipos espejo de components/mano-obra/ManoObraClient.tsx
 // ─────────────────────────────────────────────────────────────

@@ -12,15 +12,18 @@ import path from "path";
 import fs from "fs";
 
 // Cargar variables de entorno antes de que Prisma lo necesite.
-// Intenta .env.local primero (override local), luego .env como fallback.
+// Estrategia: carga .env como base, luego .env.local lo sobreescribe.
+// Así DATABASE_URL en .env siempre está disponible, y .env.local puede
+// sobreescribir variables específicas de desarrollo local.
 function cargarEnv() {
   const root = process.cwd();
-  const envLocal = path.resolve(root, ".env.local");
   const envFile = path.resolve(root, ".env");
-  if (fs.existsSync(envLocal)) {
-    config({ path: envLocal, quiet: true } as never);
-  } else if (fs.existsSync(envFile)) {
+  const envLocal = path.resolve(root, ".env.local");
+  if (fs.existsSync(envFile)) {
     config({ path: envFile, quiet: true } as never);
+  }
+  if (fs.existsSync(envLocal)) {
+    config({ path: envLocal, override: true, quiet: true } as never);
   }
 }
 cargarEnv();

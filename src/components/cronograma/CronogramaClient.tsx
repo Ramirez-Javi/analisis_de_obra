@@ -435,19 +435,11 @@ export function CronogramaClient({ proyecto, backHref, today, initialRubros = []
         const existing: RubroCronograma[] = cronogramaRaw
           ? (JSON.parse(cronogramaRaw) as RubroCronograma[])
           : [];
-        const presupuestoRaw = localStorage.getItem(`presupuesto_${proyecto.id}`);
-        // Si no hay datos en localStorage, usar los rubros cargados desde DB
-        const fallback = !presupuestoRaw && initialRubros.length > 0
-          ? JSON.stringify(initialRubros)
-          : presupuestoRaw;
-        return syncFromPresupuesto(existing, fallback, today);
+        return syncFromPresupuesto(existing, JSON.stringify(initialRubros), today);
       }
     } catch {}
-    // SSR fallback: use DB data directly
-    if (initialRubros.length > 0) {
-      return syncFromPresupuesto([], JSON.stringify(initialRubros), today);
-    }
-    return [];
+    // SSR fallback
+    return syncFromPresupuesto([], JSON.stringify(initialRubros), today);
   });
 
   const [savedKey, setSavedKey] = useState<string>(() => {
@@ -466,16 +458,15 @@ export function CronogramaClient({ proyecto, backHref, today, initialRubros = []
   const [modalOpen, setModalOpen] = useState(false);
   const [nuevaTarea, setNuevaTarea] = useState({ nombre: "", fechaInicio: today, duracion: 1 });
 
-  // Re-sync with presupuesto whenever the user navigates back to this tab
-  // (covers the case where rubros were added/removed in the presupuesto module)
+  // Re-sync with presupuesto when the user saves the presupuesto in another tab
+  // (PresupuestoClient broadcasts via BroadcastChannel after guardarPresupuesto)
   useEffect(() => {
-    function handleFocus() {
-      const presupuestoRaw = localStorage.getItem(`presupuesto_${proyecto.id}`);
-      if (!presupuestoRaw) return;
-      setRubros((prev) => syncFromPresupuesto(prev, presupuestoRaw, today));
-    }
-    window.addEventListener("focus", handleFocus);
-    return () => window.removeEventListener("focus", handleFocus);
+    const bc = new BroadcastChannel(`presupuesto_sync_${proyecto.id}`);
+    bc.onmessage = (ev: MessageEvent<string>) => {
+      const raw = ev.data;
+      if (raw) setRubros((prev) => syncFromPresupuesto(prev, raw, today));
+    };
+    return () => bc.close();
   }, [proyecto.id, today]);
 
   // ── Derived: project span ────────────────────────────────────────────────

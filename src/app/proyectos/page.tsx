@@ -1,15 +1,16 @@
 import Link from "next/link";
-import { ArrowLeft, Plus, FolderOpen, MapPin, User, ArrowRight, Calculator, Info } from "lucide-react";
+import { ArrowLeft, Plus, FolderOpen, MapPin, User, ArrowRight, Calculator, Info, Archive } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/session";
 import { DeleteProyectoButton } from "@/components/proyecto/DeleteProyectoButton";
+import { PapeleraProyectos } from "@/components/proyecto/PapeleraProyectos";
 
 async function getProyectos() {
   const session = await getSession();
   if (!session?.user) return [];
   const empresaId = (session.user as { empresaId?: string }).empresaId;
   return prisma.proyecto.findMany({
-    where: { empresaId: empresaId ?? undefined },
+    where: { empresaId: empresaId ?? undefined, archivedAt: null },
     orderBy: { createdAt: "desc" },
     select: {
       id: true,
@@ -18,6 +19,22 @@ async function getProyectos() {
       ubicacion: true,
       createdAt: true,
       propietarios: { select: { nombre: true }, take: 1 },
+    },
+  });
+}
+
+async function getProyectosArchivados() {
+  const session = await getSession();
+  if (!session?.user) return [];
+  const empresaId = (session.user as { empresaId?: string }).empresaId;
+  return prisma.proyecto.findMany({
+    where: { empresaId: empresaId ?? undefined, archivedAt: { not: null } },
+    orderBy: { archivedAt: "desc" },
+    select: {
+      id: true,
+      codigo: true,
+      nombre: true,
+      archivedAt: true,
     },
   });
 }
@@ -33,7 +50,10 @@ export default async function ProyectosLobbyPage({
   searchParams: Promise<{ modulo?: string }>;
 }) {
   const { modulo } = await searchParams;
-  const proyectos = await getProyectos();
+  const [proyectos, archivados] = await Promise.all([
+    getProyectos(),
+    getProyectosArchivados(),
+  ]);
   const moduloLabel = modulo ? MODULO_LABELS[modulo] : null;
 
   return (
@@ -191,6 +211,19 @@ export default async function ProyectosLobbyPage({
                 </div>
               </div>
             ))}
+          </div>
+        )}
+
+        {/* ── Papelera ─────────────────────────────────────────── */}
+        {archivados.length > 0 && (
+          <div className="mt-12">
+            <div className="flex items-center gap-2 mb-4">
+              <Archive size={15} className="dark:text-slate-500 text-slate-400" />
+              <h2 className="text-sm font-semibold dark:text-slate-400 text-slate-500">
+                Papelera ({archivados.length})
+              </h2>
+            </div>
+            <PapeleraProyectos proyectos={archivados} />
           </div>
         )}
       </main>

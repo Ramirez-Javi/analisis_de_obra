@@ -3,6 +3,7 @@ import { ArrowLeft, Users } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { UsuariosManager } from "@/components/admin/UsuariosManager";
 import { AccesoOficinaCard } from "@/components/admin/AccesoOficinaCard";
+import { BackupCard } from "@/components/admin/BackupCard";
 import { getSession } from "@/lib/session";
 import { redirect } from "next/navigation";
 import type { Metadata } from "next";
@@ -30,9 +31,20 @@ async function getUsuarios() {
 export default async function AdminUsuariosPage() {
   const session = await getSession();
   const role = (session?.user as { role?: string })?.role;
+  const empresaId = (session?.user as { empresaId?: string })?.empresaId;
   if (!session?.user || role !== "ADMIN") redirect("/sin-acceso");
 
-  const usuarios = await getUsuarios();
+  const [usuarios, empresa] = await Promise.all([
+    getUsuarios(),
+    empresaId
+      ? prisma.empresa.findUnique({
+          where: { id: empresaId },
+          select: { ultimoBackupAt: true },
+        })
+      : null,
+  ]);
+
+  const ultimoBackupAt = empresa?.ultimoBackupAt ?? null;
 
   return (
     <div className="flex flex-col flex-1 min-h-screen dark:bg-slate-950 bg-slate-50">
@@ -74,6 +86,10 @@ export default async function AdminUsuariosPage() {
 
         <div className="mb-8">
           <AccesoOficinaCard />
+        </div>
+
+        <div className="mb-8">
+          <BackupCard ultimoBackupAt={ultimoBackupAt} />
         </div>
 
         <UsuariosManager usuarios={usuarios} />
