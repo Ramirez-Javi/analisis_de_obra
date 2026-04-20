@@ -36,6 +36,7 @@ import { AsignarProyectoWidget } from "@/components/shared/AsignarProyectoWidget
 import type { ProyectoSimple } from "@/app/actions/proyectos";
 import type { ContratistaDB, PagoRegistroDB } from "@/app/actions/init-modulos";
 import { getEmpresaConfig, openBrandedPrintWindow } from "@/lib/reportHeader";
+import { fmtFechaCorta } from "@/lib/fmtFecha";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -935,7 +936,7 @@ function imprimirPagos(contratista: Contratista, pagos: PagoRegistro[], proyecto
       : "—";
     return `<tr style='border-bottom:0.5pt solid #e5e7eb'>
       <td style='padding:5pt 6pt;font-size:9pt;text-align:center'>${i + 1}</td>
-      <td style='padding:5pt 6pt;font-size:9pt'>${p.fecha}</td>
+      <td style='padding:5pt 6pt;font-size:9pt'>${fmtFechaCorta(p.fecha)}</td>
       <td style='padding:5pt 6pt;font-size:9pt;text-align:right;font-weight:600;color:#991b1b'>${fmtGs(p.monto)}</td>
       <td style='padding:5pt 6pt;font-size:9pt;text-align:center'>${p.porcentajePago}%</td>
       <td style='padding:5pt 6pt;font-size:9pt;text-align:center'>${p.porcentajeAvance}%</td>

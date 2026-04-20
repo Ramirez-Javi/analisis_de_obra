@@ -13,6 +13,7 @@ import {
   type EntradaData, type RubroData, type PersonalData,
 } from "@/app/proyectos/[id]/bitacora/actions";
 import { getEmpresaConfig, openBrandedPrintWindow } from "@/lib/reportHeader";
+import { fmtFechaLargaConDia as fmtFecha, fmtFechaCorta as fmtFechaCort } from "@/lib/fmtFecha";
 
 // ─── Tipos locales ────────────────────────────────────────────
 type EntradaCompleta = {
@@ -47,12 +48,7 @@ const inputCls = "w-full rounded-lg border border-gray-200 dark:border-gray-700 
 const labelCls = "block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1";
 const textareaCls = `${inputCls} resize-none min-h-[72px]`;
 
-function fmtFecha(d: Date | string) {
-  return new Date(d).toLocaleDateString("es-PY", { weekday: "long", day: "2-digit", month: "long", year: "numeric" });
-}
-function fmtFechaCort(d: Date | string) {
-  return new Date(d).toLocaleDateString("es-PY", { day: "2-digit", month: "2-digit", year: "numeric" });
-}
+
 
 const CLIMAS = ["Soleado", "Parcialmente nublado", "Nublado", "Lluvioso", "Tormenta", "Ventoso", "Frío"];
 const TURNOS = ["Completo (07:00–17:00)", "Mañana (07:00–12:00)", "Tarde (13:00–17:00)", "Nocturno"];

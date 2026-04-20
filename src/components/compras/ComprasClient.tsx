@@ -20,6 +20,7 @@ import {
   PieChart, Pie, Cell, Tooltip as ChartTooltip, ResponsiveContainer,
 } from "recharts";
 import { getEmpresaConfig, openBrandedPrintWindow } from "@/lib/reportHeader";
+import { fmtFechaCorta as fmtFecha } from "@/lib/fmtFecha";
 
 type MovimientoPago = {
   id: string;
@@ -56,9 +57,7 @@ function fmtGs(n: number) {
     style: "currency", currency: "PYG", maximumFractionDigits: 0,
   }).format(n);
 }
-function fmtFecha(d: Date | string) {
-  return new Date(d).toLocaleDateString("es-PY", { day: "2-digit", month: "2-digit", year: "numeric" });
-}
+
 
 // ─── Helpers de impresi\u00f3n ───────────────────────────────────────
 const METODO_LABEL: Record<string, string> = {
@@ -90,8 +89,8 @@ function buildComprobanteFactura(
   if (m?.metodoPago === "CHEQUE") {
     if (m.bancoCheque) medioPagoContent += row("Banco", m.bancoCheque);
     if (m.nroCheque) medioPagoContent += row("N\u00b0 de Cheque", m.nroCheque);
-    if (m.fechaEmisionCheque) medioPagoContent += row("Fecha de Emisi\u00f3n", new Date(m.fechaEmisionCheque).toLocaleDateString("es-PY"));
-    if (m.fechaCobroCheque) medioPagoContent += row("Fecha de Cobro", new Date(m.fechaCobroCheque).toLocaleDateString("es-PY"));
+    if (m.fechaEmisionCheque) medioPagoContent += row("Fecha de Emisi\u00f3n", fmtFecha(m.fechaEmisionCheque));
+    if (m.fechaCobroCheque) medioPagoContent += row("Fecha de Cobro", fmtFecha(m.fechaCobroCheque));
   }
   if (m?.metodoPago === "TRANSFERENCIA" || m?.metodoPago === "GIRO") {
     if (m.bancoTransfer) medioPagoContent += row("Banco", m.bancoTransfer);

@@ -4,6 +4,7 @@
  * `reportes_empresa_${proyectoId}`) and returns ready-to-use HTML strings
  * and CSS so every PDF export shares the same branded header.
  */
+import { fmtFechaEmision } from "./fmtFecha";
 
 export interface EmpresaConfig {
   nombre: string;
@@ -99,7 +100,7 @@ export function openBrandedPrintWindow(
   const win = window.open("", "_blank", "width=1100,height=750");
   if (!win) { alert("Permitir ventanas emergentes para exportar PDF"); return; }
 
-  const fecha = new Date().toLocaleDateString("es-PY", { day: "2-digit", month: "long", year: "numeric" });
+  const fecha = fmtFechaEmision();
   const year = new Date().getFullYear();
   const header = buildReportHeader(empresa);
 

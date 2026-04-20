@@ -29,6 +29,7 @@ import {
   fmtGs,
   fmtNum,
 } from "@/components/presupuesto/types";
+import { fmtFechaLarga as fmtDate, fmtFechaEmision } from "@/lib/fmtFecha";
 
 // ─────────────────────────────────────────────────────────────
 // Types
@@ -159,15 +160,6 @@ const ESTADOS_LABEL: Record<string, string> = {
 // ─────────────────────────────────────────────────────────────
 // Helpers
 // ─────────────────────────────────────────────────────────────
-
-function fmtDate(d?: Date | string | null): string {
-  if (!d) return "—";
-  return new Date(d).toLocaleDateString("es-PY", {
-    day: "2-digit",
-    month: "long",
-    year: "numeric",
-  });
-}
 
 function exportCSV(
   rubros: RubroProyecto[],
@@ -510,7 +502,7 @@ function printGantt(
 
 
 
-  const today = new Date().toLocaleDateString("es-PY", { day: "2-digit", month: "long", year: "numeric" });
+  const today = fmtFechaEmision();
   const totalCertificado = rubros.reduce((s, r) => s + r.total * (r.avanceReal / 100), 0);
   const fmtG = (n: number) => "Gs " + new Intl.NumberFormat("es-PY").format(Math.round(n));
 
@@ -616,7 +608,7 @@ function printPersonal(
   const logoHtml = empresa.logoUrl
     ? `<img src="${empresa.logoUrl}" style="width:52pt;height:52pt;object-fit:contain;display:block;" />`
     : `<div class="logo-initial">${empresa.nombre.charAt(0)}</div>`;
-  const today = new Date().toLocaleDateString("es-PY", { day: "2-digit", month: "long", year: "numeric" });
+  const today = fmtFechaEmision();
   const fmtG = (n: number) => "Gs " + new Intl.NumberFormat("es-PY").format(Math.round(n));
   const totPactado = contratos.reduce((s, c) => s + c.montoPactado, 0);
   const totPagado = contratos.reduce((s, c) => s + c.totalPagado, 0);
@@ -700,7 +692,7 @@ function printLogistica(
   const logoHtml = empresa.logoUrl
     ? `<img src="${empresa.logoUrl}" style="width:52pt;height:52pt;object-fit:contain;display:block;" />`
     : `<div class="logo-initial">${empresa.nombre.charAt(0)}</div>`;
-  const today = new Date().toLocaleDateString("es-PY", { day: "2-digit", month: "long", year: "numeric" });
+  const today = fmtFechaEmision();
   const fmtG = (n: number) => "Gs " + new Intl.NumberFormat("es-PY").format(Math.round(n));
 
   const TIPO_LABELS: Record<string, string> = {
@@ -2094,11 +2086,7 @@ export default function ReportesClient({
     { key: "logistica", label: "Logística", icon: Truck },
   ];
 
-  const today = new Date().toLocaleDateString("es-PY", {
-    day: "2-digit",
-    month: "long",
-    year: "numeric",
-  });
+  const today = fmtFechaEmision();
 
   return (
     <div className="min-h-screen dark:bg-slate-950 bg-slate-50">

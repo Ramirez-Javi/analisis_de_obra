@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
 import { getEmpresaConfig, openBrandedPrintWindow } from "@/lib/reportHeader";
+import { fmtFechaCorta as fmtFecha } from "@/lib/fmtFecha";
 import { crearMovimiento, eliminarMovimiento, actualizarMovimiento } from "@/app/proyectos/[id]/financiero/actions";
 import type { NuevoMovimientoData } from "@/app/proyectos/[id]/financiero/actions";
 import type { MovimientoFinanciero, Proveedor } from "@prisma/client";
@@ -49,11 +50,7 @@ function fmtGs(n: number) {
   }).format(n);
 }
 
-function fmtFecha(d: Date | string) {
-  return new Date(d).toLocaleDateString("es-PY", {
-    day: "2-digit", month: "2-digit", year: "numeric",
-  });
-}
+
 
 // ─── KPI Card ───────────────────────────────────────────────
 function KPI({ label, value, color, icon: Icon }: {

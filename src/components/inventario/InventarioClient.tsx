@@ -15,6 +15,7 @@ import {
   type RecepcionData, type AsBuiltData, type FilaControlStock,
 } from "@/app/proyectos/[id]/inventario/actions";
 import { getEmpresaConfig, openBrandedPrintWindow } from "@/lib/reportHeader";
+import { fmtFechaCorta as fmtFecha } from "@/lib/fmtFecha";
 // ─── Tipos (definidos localmente, sin importar desde @prisma/client) ─────────
 type MaterialSelect = { id: string; codigo: string; nombre: string; unidadMedida: { simbolo: string } };
 type ProveedorSelect = { id: string; razonSocial: string };
@@ -68,9 +69,7 @@ const inputCls =
   "w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/40";
 const labelCls = "block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1";
 
-function fmtFecha(d: Date | string) {
-  return new Date(d).toLocaleDateString("es-PY", { day: "2-digit", month: "2-digit", year: "numeric" });
-}
+
 
 function calcStock(r: RecepcionConDetalle) {
   const salida = r.asBuiltRegistros.reduce((s, a) => s + a.cantidadInstalada, 0);
